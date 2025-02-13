@@ -1,0 +1,16 @@
+{
+  "name": "ids-analysis-worker",
+  "version": "1.0.0",
+  "description": "Analysis worker for IDS system",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "redis": "^4.6.13"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+} 

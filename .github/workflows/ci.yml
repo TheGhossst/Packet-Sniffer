@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+
+    - name: Install Go dependencies
+      run: |
+        cd capture-service
+        go mod tidy
+
+    - name: Install Node.js dependencies
+      run: |
+        cd analysis-worker
+        npm install
+
+    - name: Run Go tests
+      run: |
+        cd capture-service
+        go test ./...
+
+    - name: Run Node.js tests
+      run: |
+        cd analysis-worker
+        npm test 

@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  capture-service:
+    build:
+      context: ./capture-service
+      dockerfile: Dockerfile
+    network_mode: "host"  # Required for packet capture
+    depends_on:
+      - redis
+
+  analysis-worker:
+    build:
+      context: ./analysis-worker
+      dockerfile: Dockerfile
+    depends_on:
+      - redis
+      - capture-service
+
+volumes:
+  redis-data: 
