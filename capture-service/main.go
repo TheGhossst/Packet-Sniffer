@@ -26,7 +26,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Replace local PacketData with types.PacketData
 type PacketData = types.PacketData
 
 var (
@@ -41,7 +40,7 @@ type PacketBatch struct {
 }
 
 type Config struct {
-	SampleRate int // e.g., 1 in N packets
+	SampleRate int
 }
 
 type PacketMetrics struct {
@@ -52,7 +51,6 @@ type PacketMetrics struct {
 	RedisErrors      uint64
 }
 
-// Add packet filtering and buffering
 type PacketBuffer struct {
 	buffer    []types.PacketData
 	batchSize int
@@ -121,7 +119,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Create shutdown channel
 	shutdown := make(chan struct{})
 	go func() {
 		sigChan := make(chan os.Signal, 1)
@@ -131,54 +128,44 @@ func main() {
 		log.Println("Initiating graceful shutdown...")
 		cancel()
 
-		// Allow time for cleanup
 		time.Sleep(time.Second * 2)
 		close(shutdown)
 	}()
 
 	cfg := config.LoadConfig()
 
-	// Initialize Redis client
 	rdb := redis.NewClient(&redis.Options{
 		Addr: cfg.RedisAddr,
 	})
 	defer rdb.Close()
 
-	// Test Redis connection
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
 
-	// Find network interfaces
 	iface := cfg.Interface
 	if iface == "" {
 		iface = findDefaultInterface()
 	}
 
-	// Open the device for capturing
 	handle, err := pcap.OpenLive(iface, cfg.SnapshotLen, cfg.Promiscuous, pcap.BlockForever)
 	if err != nil {
 		log.Fatalf("Failed to open device %s: %v", iface, err)
 	}
 	defer handle.Close()
 
-	// Create packet source
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
-	// Create a channel to receive packets
 	packets := make(chan PacketData, 1000)
 
-	// Create a WaitGroup for goroutines
 	var wg sync.WaitGroup
 
-	// Start packet processing goroutine
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		processPackets(ctx, packets, rdb)
 	}()
 
-	// Start packet capture
 	go func() {
 		for packet := range packetSource.Packets() {
 			data := parsePacket(packet)
@@ -188,7 +175,6 @@ func main() {
 		}
 	}()
 
-	// Wait for shutdown signal
 	<-shutdown
 	log.Println("Shutting down...")
 	close(packets)
@@ -245,7 +231,6 @@ func publishBatch(ctx context.Context, rdb *redis.Client, batch []PacketData, me
 		return fmt.Errorf("redis publish error: %w", err)
 	}
 
-	// Track latency
 	latency := time.Since(startTime)
 	atomic.StoreInt64((*int64)(&metrics.AverageLatency), int64(latency))
 
@@ -264,19 +249,16 @@ func processPacketData(packet gopacket.Packet) (PacketData, error) {
 		pd.PacketType = packet.Layers()[0].LayerType().String()
 	}
 
-	// Extract network layer info if available
 	if networkLayer := packet.NetworkLayer(); networkLayer != nil {
 		pd.SrcIP = networkLayer.NetworkFlow().Src().String()
 		pd.DstIP = networkLayer.NetworkFlow().Dst().String()
 		pd.Protocol = networkLayer.LayerType().String()
 	} else {
-		// Handle link layer info if network layer is not available
 		if linkLayer := packet.LinkLayer(); linkLayer != nil {
 			pd.Protocol = linkLayer.LayerType().String()
 		}
 	}
 
-	// Extract transport layer info if available
 	if transportLayer := packet.TransportLayer(); transportLayer != nil {
 		pd.SrcPort = uint16(transportLayer.TransportFlow().Src().Raw()[0])<<8 |
 			uint16(transportLayer.TransportFlow().Src().Raw()[1])
@@ -284,7 +266,6 @@ func processPacketData(packet gopacket.Packet) (PacketData, error) {
 			uint16(transportLayer.TransportFlow().Dst().Raw()[1])
 	}
 
-	// Set payload size if application layer exists
 	if applicationLayer := packet.ApplicationLayer(); applicationLayer != nil {
 		pd.PayloadSize = len(applicationLayer.Payload())
 	}
