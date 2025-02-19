@@ -11,3 +11,5 @@ Start-Process -FilePath ".\capture-service.exe" -ArgumentList "-interface `"\Dev
 Pause
 
 #Execute using .\capture-service.ps1
+
+# .\capture-service.exe -interface "\Device\NPF_{5429026E-E352-479A-BEE6-D4D9D3F7FF51}" -redis "localhost:6379"

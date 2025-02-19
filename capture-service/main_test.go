@@ -25,7 +25,7 @@ func TestRedisConnection(t *testing.T) {
 
 func TestPacketDataSerialization(t *testing.T) {
 	pd := PacketData{
-		Timestamp:   time.Now(),
+		Timestamp:   time.Now().Format(time.RFC3339),
 		SrcIP:       "192.168.1.1",
 		DstIP:       "192.168.1.2",
 		Protocol:    "TCP",

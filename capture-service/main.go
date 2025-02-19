@@ -9,44 +9,78 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/google/uuid"
+
+	"ids/capture-service/config"
+
+	"ids/capture-service/filters"
+	"ids/capture-service/types"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 	"github.com/redis/go-redis/v9"
 )
 
-// PacketData represents the structure of our captured packet data
-type PacketData struct {
-	Timestamp   time.Time `json:"timestamp"`
-	SrcIP       string    `json:"src_ip"`
-	DstIP       string    `json:"dst_ip"`
-	Protocol    string    `json:"protocol"`
-	SrcPort     uint16    `json:"src_port"`
-	DstPort     uint16    `json:"dst_port"`
-	PacketSize  int       `json:"packet_size"`
-	PacketType  string    `json:"packet_type"`
-	PayloadSize int       `json:"payload_size"`
-}
+// Replace local PacketData with types.PacketData
+type PacketData = types.PacketData
 
 var (
 	device      string
-	snapshotLen int32 = 1024
-	promiscuous bool  = true
-	timeout     time.Duration
 	redisAddr   string
 	packetCount int
-)
-
-const (
-	batchSize    = 100
-	batchTimeout = 500 * time.Millisecond
 )
 
 type PacketBatch struct {
 	Packets   []PacketData `json:"packets"`
 	Timestamp time.Time    `json:"timestamp"`
+}
+
+type Config struct {
+	SampleRate int // e.g., 1 in N packets
+}
+
+type PacketMetrics struct {
+	PacketsProcessed uint64
+	BytesProcessed   uint64
+	BatchesSent      uint64
+	AverageLatency   time.Duration
+	RedisErrors      uint64
+}
+
+// Add packet filtering and buffering
+type PacketBuffer struct {
+	buffer    []types.PacketData
+	batchSize int
+	metrics   *PacketMetrics
+	filter    *filters.PacketFilter
+}
+
+func NewPacketBuffer(batchSize int) *PacketBuffer {
+	return &PacketBuffer{
+		buffer:    make([]types.PacketData, 0, batchSize),
+		batchSize: batchSize,
+		metrics:   &PacketMetrics{},
+		filter:    filters.NewPacketFilter(),
+	}
+}
+
+func (pb *PacketBuffer) Add(packet PacketData) ([]PacketData, bool) {
+	if !pb.filter.ShouldProcess(packet) {
+		return nil, false
+	}
+
+	pb.buffer = append(pb.buffer, packet)
+	if len(pb.buffer) >= pb.batchSize {
+		batch := pb.buffer
+		pb.buffer = make([]types.PacketData, 0, pb.batchSize)
+		return batch, true
+	}
+	return nil, false
 }
 
 func init() {
@@ -80,145 +114,147 @@ func init() {
 
 	flag.StringVar(&device, "interface", defaultInterface, "Network interface to capture")
 	flag.StringVar(&redisAddr, "redis", "localhost:6379", "Redis server address")
-	flag.DurationVar(&timeout, "timeout", pcap.BlockForever, "Capture timeout")
 	flag.Parse()
 }
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Printf("Starting packet capture on interface: %s\n", device)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Create shutdown channel
+	shutdown := make(chan struct{})
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		<-sigChan
+
+		log.Println("Initiating graceful shutdown...")
+		cancel()
+
+		// Allow time for cleanup
+		time.Sleep(time.Second * 2)
+		close(shutdown)
+	}()
+
+	cfg := config.LoadConfig()
 
 	// Initialize Redis client
 	rdb := redis.NewClient(&redis.Options{
-		Addr: redisAddr,
+		Addr: cfg.RedisAddr,
 	})
 	defer rdb.Close()
 
 	// Test Redis connection
-	ctx := context.Background()
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
-	log.Println("Successfully connected to Redis")
 
-	// Open device for capturing
-	handle, err := pcap.OpenLive(device, snapshotLen, promiscuous, timeout)
+	// Find network interfaces
+	iface := cfg.Interface
+	if iface == "" {
+		iface = findDefaultInterface()
+	}
+
+	// Open the device for capturing
+	handle, err := pcap.OpenLive(iface, cfg.SnapshotLen, cfg.Promiscuous, pcap.BlockForever)
 	if err != nil {
-		log.Fatalf("Error opening device %s: %v", device, err)
+		log.Fatalf("Failed to open device %s: %v", iface, err)
 	}
 	defer handle.Close()
 
-	// Use a more permissive BPF filter to capture more types of packets
-	err = handle.SetBPFFilter("") // Empty filter to capture all packets
-	if err != nil {
-		log.Printf("Warning: Could not set BPF filter: %v", err)
-	}
+	// Create packet source
+	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
-	// Add statistics logging
+	// Create a channel to receive packets
+	packets := make(chan PacketData, 1000)
+
+	// Create a WaitGroup for goroutines
+	var wg sync.WaitGroup
+
+	// Start packet processing goroutine
+	wg.Add(1)
 	go func() {
-		for {
-			time.Sleep(5 * time.Second)
-			stats, err := handle.Stats()
-			if err != nil {
-				log.Printf("Error getting stats: %v", err)
-				continue
+		defer wg.Done()
+		processPackets(ctx, packets, rdb)
+	}()
+
+	// Start packet capture
+	go func() {
+		for packet := range packetSource.Packets() {
+			data := parsePacket(packet)
+			if data != nil {
+				packets <- *data
 			}
-			log.Printf("Packets received: %d, dropped: %d, interface dropped: %d",
-				stats.PacketsReceived, stats.PacketsDropped, stats.PacketsIfDropped)
 		}
 	}()
 
-	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-
-	log.Println("Starting packet capture...")
-	packetChan := packetSource.Packets()
-
-	batchChan := make(chan PacketData, batchSize)
-	done := make(chan bool)
-
-	go processBatches(ctx, batchChan, rdb, done)
-
-	// Modify the packet processing loop
-	for {
-		select {
-		case packet := <-packetChan:
-			if packet == nil {
-				continue
-			}
-			// Process packet and send to batch channel
-			pd, err := processPacketData(packet)
-			if err != nil {
-				log.Printf("Error processing packet data: %v", err)
-				continue
-			}
-			batchChan <- pd
-
-		case <-signalChan:
-			log.Println("Shutting down...")
-			close(batchChan)
-			<-done // Wait for batch processor to finish
-			return
-		}
-	}
+	// Wait for shutdown signal
+	<-shutdown
+	log.Println("Shutting down...")
+	close(packets)
+	wg.Wait()
 }
 
-func processBatches(ctx context.Context, batchChan chan PacketData, rdb *redis.Client, done chan bool) {
-	defer close(done)
-
-	var batch []PacketData
-	ticker := time.NewTicker(batchTimeout)
+func processPackets(ctx context.Context, packets <-chan PacketData, rdb *redis.Client) {
+	buffer := NewPacketBuffer(100)
+	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
+	var metrics PacketMetrics
+
 	for {
 		select {
-		case packet, ok := <-batchChan:
+		case <-ctx.Done():
+			return
+		case packet, ok := <-packets:
 			if !ok {
-				// Channel closed, flush remaining packets
-				if len(batch) > 0 {
-					publishBatch(ctx, batch, rdb)
-				}
 				return
 			}
-
-			batch = append(batch, packet)
-			if len(batch) >= batchSize {
-				publishBatch(ctx, batch, rdb)
-				batch = make([]PacketData, 0, batchSize)
+			if batch, ready := buffer.Add(packet); ready {
+				if err := publishBatch(ctx, rdb, batch, &metrics); err != nil {
+					log.Printf("Error publishing batch: %v", err)
+					atomic.AddUint64(&metrics.RedisErrors, 1)
+				}
 			}
-
 		case <-ticker.C:
-			if len(batch) > 0 {
-				publishBatch(ctx, batch, rdb)
-				batch = make([]PacketData, 0, batchSize)
+			if len(buffer.buffer) > 0 {
+				if err := publishBatch(ctx, rdb, buffer.buffer, &metrics); err != nil {
+					log.Printf("Error publishing partial batch: %v", err)
+					atomic.AddUint64(&metrics.RedisErrors, 1)
+				}
+				buffer.buffer = buffer.buffer[:0]
 			}
 		}
 	}
 }
 
-func publishBatch(ctx context.Context, batch []PacketData, rdb *redis.Client) {
-	pb := PacketBatch{
-		Packets:   batch,
-		Timestamp: time.Now(),
+func publishBatch(ctx context.Context, rdb *redis.Client, batch []PacketData, metrics *PacketMetrics) error {
+	startTime := time.Now()
+	data := map[string]interface{}{
+		"packets":   batch,
+		"timestamp": time.Now(),
+		"batchId":   uuid.New().String(),
 	}
 
-	packetJSON, err := json.Marshal(pb)
+	jsonData, err := json.Marshal(data)
 	if err != nil {
-		log.Printf("Error marshaling batch: %v", err)
-		return
+		return fmt.Errorf("batch marshaling error: %w", err)
 	}
 
-	err = rdb.Publish(ctx, "packet-stream", packetJSON).Err()
-	if err != nil {
-		log.Printf("Error publishing batch: %v", err)
+	if err := rdb.Publish(ctx, "packet-stream", jsonData).Err(); err != nil {
+		return fmt.Errorf("redis publish error: %w", err)
 	}
+
+	// Track latency
+	latency := time.Since(startTime)
+	atomic.StoreInt64((*int64)(&metrics.AverageLatency), int64(latency))
+
+	return nil
 }
 
 func processPacketData(packet gopacket.Packet) (PacketData, error) {
 	pd := PacketData{
-		Timestamp:   packet.Metadata().Timestamp,
+		Timestamp:   packet.Metadata().Timestamp.Format(time.RFC3339),
 		PacketSize:  len(packet.Data()),
 		PacketType:  "Unknown",
 		PayloadSize: 0,
@@ -283,4 +319,35 @@ func printInterfaceDetails(devices []pcap.Interface) {
 	fmt.Println("Use -interface flag to specify an interface by name")
 	fmt.Println("Example: -interface \"" + devices[0].Name + "\"")
 	fmt.Println()
+}
+
+func findDefaultInterface() string {
+	devices, err := pcap.FindAllDevs()
+	if err != nil {
+		log.Fatalf("Error finding devices: %v", err)
+	}
+
+	for _, dev := range devices {
+		if strings.Contains(dev.Description, "Loopback") ||
+			strings.Contains(dev.Description, "Virtual") {
+			continue
+		}
+		for _, addr := range dev.Addresses {
+			ip := addr.IP.String()
+			if !strings.HasPrefix(ip, "169.254.") && !strings.HasPrefix(ip, "fe80::") {
+				return dev.Name
+			}
+		}
+	}
+
+	return devices[0].Name
+}
+
+func parsePacket(packet gopacket.Packet) *PacketData {
+	pd, err := processPacketData(packet)
+	if err != nil {
+		log.Printf("Error processing packet data: %v", err)
+		return nil
+	}
+	return &pd
 }
