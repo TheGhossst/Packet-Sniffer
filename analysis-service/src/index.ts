@@ -1,12 +1,14 @@
 import express from 'express';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
+import path from 'path';
 import { AnalysisController } from './api/analysis.controller';
 import { analysisService } from './services/analysis.service';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { logger } from './utils/logger';
 
-dotenv.config();
+// Load environment variables at startup
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
