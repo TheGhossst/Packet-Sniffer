@@ -14,12 +14,16 @@ export class RateLimiter {
         
         // Connect to Redis when service initializes
         this.redis.connect().catch(err => {
-            logger.error('Redis connection error:', err);
+            logger.error('Redis connection error:', {
+                error: err instanceof Error ? { message: err.message, stack: err.stack } : String(err)
+            });
         });
 
         // Handle Redis errors
         this.redis.on('error', err => {
-            logger.error('Redis error:', err);
+            logger.error('Redis error:', {
+                error: err instanceof Error ? { message: err.message, stack: err.stack } : String(err)
+            });
         });
 
         this.windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000');
@@ -34,7 +38,12 @@ export class RateLimiter {
             }
             return current <= this.maxRequests;
         } catch (error) {
-            logger.error('Rate limit check error:', error);
+            logger.error('Rate limit check error:', {
+                error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error),
+                key,
+                windowMs: this.windowMs,
+                maxRequests: this.maxRequests
+            });
             return true; // Allow request on error to prevent blocking legitimate traffic
         }
     }

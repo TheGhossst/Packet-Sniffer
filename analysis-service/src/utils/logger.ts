@@ -1,97 +1,126 @@
+/**
+ * Enhanced logger utility with structured logging support
+ */
+
 import winston from 'winston';
 import chalk from 'chalk';
 
-// Import Winston types
-import { TransformableInfo } from 'logform';
+interface PacketDetails {
+    source: string;
+    destination: string;
+    protocol: string;
+    size: number;
+    type: string;
+    timestamp: string;
+}
 
-// Custom format for pretty printing
-const prettyPrint = winston.format((info: TransformableInfo) => {
-    // Remove color codes from log files
-    const cleanMessage = info.message?.toString().replace(/\u001b\[\d+m/g, '') || '';
-    
-    switch (info.level) {
-        case 'info':
-            if (cleanMessage.includes('=== Batch Processing Start ===')) {
-                info.message = '\n' + '='.repeat(50) + '\n' + 
-                    `📦 BATCH PROCESSING START\n` +
-                    '='.repeat(50);
-            } else if (cleanMessage.includes('=== Batch Processing Complete ===')) {
-                info.message = '\n' + '-'.repeat(50) + '\n' +
-                    `✅ BATCH PROCESSING COMPLETE\n` +
-                    '-'.repeat(50) + '\n';
-            } else if (cleanMessage.includes('Batch ID:')) {
-                const batchId = cleanMessage.split('Batch ID: ')[1];
-                info.message = `🔍 Batch ID: ${chalk.blue(batchId)}`;
-            } else if (cleanMessage.includes('Packets in batch:')) {
-                const count = cleanMessage.split('Packets in batch: ')[1];
-                info.message = `📊 Packet Count: ${chalk.blue(count)}`;
-            }
-            break;
-        case 'warn':
-            if (cleanMessage.includes('Alert Detected')) {
-                info.message = '\n' + '!'.repeat(50) + '\n' +
-                    `🚨 ALERT DETECTED\n` +
-                    '!'.repeat(50);
-            }
-            break;
-        case 'error':
-            info.message = '\n' + '❌'.repeat(25) + '\n' +
-                `ERROR: ${cleanMessage}\n` +
-                '❌'.repeat(25) + '\n';
-            break;
+interface AlertMessage {
+    packetDetails?: PacketDetails;
+    severity?: string;
+    rule?: string;
+    score?: number;
+    [key: string]: any; // Allow additional properties
+}
+
+const isPacketDetails = (obj: any): obj is PacketDetails => {
+    return obj && typeof obj === 'object' &&
+        typeof obj.source === 'string' &&
+        typeof obj.destination === 'string' &&
+        typeof obj.protocol === 'string' &&
+        typeof obj.type === 'string' &&
+        typeof obj.timestamp === 'string';
+};
+
+const isAlertMessage = (obj: any): obj is AlertMessage => {
+    return obj && typeof obj === 'object';
+};
+
+const formatPacketDetails = (details: PacketDetails): string => {
+    const fields = [
+        ['Source', details.source],
+        ['Destination', details.destination],
+        ['Protocol', details.protocol],
+        ['Size', `${details.size} bytes`],
+        ['Type', details.type],
+        ['Timestamp', details.timestamp]
+    ];
+
+    return fields
+        .map(([key, value]) => `    ${chalk.cyan(key.padEnd(12))}: ${value}`)
+        .join('\n');
+};
+
+const formatAlert = (alert: AlertMessage): string => {
+    return Object.entries(alert)
+        .map(([key, value]) => `    ${chalk.yellow(key.padEnd(12))}: ${value}`)
+        .join('\n');
+};
+
+const customFormat = winston.format.printf(({ level, message, timestamp }) => {
+    // Handle string messages
+    if (typeof message === 'string') {
+        // Format batch processing headers
+        if (message.includes('=== Batch Processing')) {
+            return `\n${chalk.yellow(message)}\n`;
+        }
+
+        // Format batch details
+        if (message.startsWith('Batch ID:') || 
+            message.startsWith('Timestamp:') || 
+            message.startsWith('Packets in batch:')) {
+            return chalk.blue(message);
+        }
+
+        // Format alert headers
+        if (message === '🚨 Alert Detected:') {
+            return `\n${chalk.red('🚨 Alert Detected:')}\n`;
+        }
+
+        // Default string message format
+        return `${timestamp} [${level.toUpperCase()}]: ${message}`;
     }
-    return info;
+
+    // Handle object messages
+    if (isAlertMessage(message)) {
+        if (message.packetDetails && isPacketDetails(message.packetDetails)) {
+            return `${chalk.yellow('\nPacket Details:')}\n${formatPacketDetails(message.packetDetails)}`;
+        }
+        return `${chalk.yellow('Alert Details:')}\n${formatAlert(message)}`;
+    }
+
+    // Fallback for unknown message types
+    return `${timestamp} [${level.toUpperCase()}]: ${JSON.stringify(message)}`;
 });
 
-// Create custom format
-const logFormat = winston.format.combine(
-    winston.format.timestamp(),
-    prettyPrint(),
-    winston.format.printf((info: TransformableInfo) => {
-        // Ensure timestamp is a valid string or number
-        const timestamp = typeof info.timestamp === 'string' || typeof info.timestamp === 'number' 
-            ? info.timestamp 
-            : Date.now();
-            
-        const ts = new Date(timestamp).toLocaleTimeString();
-        let icon = '📝';
-        switch (info.level) {
-            case 'error': icon = '❌'; break;
-            case 'warn': icon = '⚠️'; break;
-            case 'info': icon = 'ℹ️'; break;
-            case 'debug': icon = '🔍'; break;
-        }
-        return `${icon} ${ts} | ${info.message}`;
-    })
-);
-
-// Configure logger
-const logger = winston.createLogger({
-    level: process.env.LOG_LEVEL || 'info',
-    format: logFormat,
+export const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.colorize(),
+        customFormat
+    ),
     transports: [
         new winston.transports.Console({
             format: winston.format.combine(
+                winston.format.timestamp(),
                 winston.format.colorize(),
-                logFormat
+                customFormat
             )
         }),
-        new winston.transports.File({ 
-            filename: 'logs/error.log', 
+        new winston.transports.File({
+            filename: 'logs/error.log',
             level: 'error',
             format: winston.format.combine(
-                winston.format.uncolorize(),
-                logFormat
+                winston.format.timestamp(),
+                winston.format.json()
             )
         }),
-        new winston.transports.File({ 
+        new winston.transports.File({
             filename: 'logs/combined.log',
             format: winston.format.combine(
-                winston.format.uncolorize(),
-                logFormat
+                winston.format.timestamp(),
+                winston.format.json()
             )
         })
     ]
-});
-
-export { logger }; 
+}); 

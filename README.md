@@ -1,16 +1,113 @@
 # Network IDS with Threat Intelligence
 
-An Intrusion Detection System (IDS) that combines real-time packet capture with threat intelligence APIs.
+An advanced Intrusion Detection System (IDS) that combines real-time packet capture with multi-source threat intelligence APIs for comprehensive network security monitoring.
 
 ## Table of Contents
+- [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Setup Instructions](#setup-instructions)
 - [Architecture](#architecture)
+  - [Core Components](#core-components)
+  - [Threat Intelligence Integration](#threat-intelligence-integration)
+  - [Analysis Pipeline](#analysis-pipeline)
 - [API Documentation](#api-documentation)
-  - [Analysis Service](#analysis-service)
-  - [Capture Service](#capture-service)
 - [Configuration](#configuration)
 - [Monitoring](#monitoring)
+- [Development](#development)
+
+## Features
+
+### 1. Advanced Packet Analysis
+- Real-time packet capture and analysis
+- Support for both IPv4 and IPv6
+- Protocol-specific validation
+- Port scanning detection
+- DoS/DDoS attack detection
+- Brute force attempt detection
+- Traffic pattern analysis
+
+### 2. Multi-Source Threat Intelligence
+- **IsMalicious API Integration (40% weight)**
+  - Real-time threat detection
+  - Detailed source categorization
+  - Comprehensive reputation metrics
+  - WHOIS information
+  - Geographical data
+  - Similar domain analysis
+
+- **AbuseIPDB Integration (30% weight)**
+  - Confidence scoring (0-100)
+  - Historical abuse reports
+  - Community-driven reporting
+
+- **VirusTotal Integration (30% weight)**
+  - Multi-engine detection
+  - File and URL scanning
+  - Comprehensive threat data
+
+### 3. Sophisticated Scoring System
+- **Composite Reputation Scoring**
+  ```typescript
+  compositeScore = (
+    isMalicious * 0.4 +
+    abuseIPDB * 0.3 +
+    virusTotal * 0.3
+  )
+  ```
+
+- **Alert Severity Thresholds**
+  - CRITICAL: Score ≥ 0.85 (requires 3+ sources)
+  - HIGH: Score ≥ 0.70 (requires 2+ sources)
+  - MEDIUM: Score ≥ 0.50 (requires 2+ sources)
+  - LOW: Score ≥ 0.30 (requires 1+ source)
+
+### 4. Advanced Error Handling
+- Custom error types for different scenarios
+- Detailed error context
+- Error chaining
+- Structured logging
+
+### 5. Performance Features
+- **Caching System**
+  - In-memory caching for reputation data
+  - Configurable TTL (default: 1 hour)
+  - Cache hit/miss metrics
+
+- **Rate Limiting**
+  - Token bucket algorithm
+  - Configurable limits per API
+  - Burst handling
+  - Automatic backoff
+
+- **Retry Mechanism**
+  - Exponential backoff
+  - Configurable retry attempts
+  - Timeout handling
+  - Circuit breaking
+
+### 6. Traffic Pattern Analysis
+- **Pattern Detection**
+  - Port scanning patterns
+  - DoS/DDoS patterns
+  - Brute force patterns
+  - Suspicious port combinations
+
+- **Service Recognition**
+  - Well-known service detection
+  - Protocol validation
+  - Port-protocol correlation
+
+### 7. Metrics and Monitoring
+- **Detailed Metrics**
+  - API performance metrics
+  - Cache efficiency metrics
+  - Processing time metrics
+  - Alert distribution metrics
+
+- **Source Performance Tracking**
+  - True/false positive tracking
+  - Source accuracy metrics
+  - Dynamic weight adjustment
 
 ## Prerequisites
 
@@ -23,8 +120,11 @@ An Intrusion Detection System (IDS) that combines real-time packet capture with 
 ## Setup Instructions
 
 1. Install Npcap:
-   - Download from [Npcap website](https://npcap.com/#download)
-   - Install with WinPcap compatibility mode
+   ```bash
+   # Download from Npcap website
+   https://npcap.com/#download
+   # Install with WinPcap compatibility mode
+   ```
 
 2. Install Redis:
    ```bash
@@ -32,7 +132,14 @@ An Intrusion Detection System (IDS) that combines real-time packet capture with 
    docker run --name redis -p 6379:6379 -d redis
    ```
 
-3. Start the services:
+3. Configure Environment Variables:
+   ```bash
+   # Analysis Service
+   cp analysis-service/.env.example analysis-service/.env
+   # Edit .env with your API keys and configuration
+   ```
+
+4. Start Services:
    ```bash
    # Using Docker Compose
    docker-compose up -d
@@ -40,68 +147,59 @@ An Intrusion Detection System (IDS) that combines real-time packet capture with 
 
 ## Architecture
 
-![Architecture Diagram](analysis-service.png)
+### Core Components
 
-### Reputation Scoring System
+1. **Capture Service**
+   - Network packet capture
+   - Initial packet filtering
+   - Packet batching and queueing
 
-The IDS uses a sophisticated composite reputation scoring system that combines multiple threat intelligence sources:
+2. **Analysis Service**
+   - Packet validation and normalization
+   - Traffic pattern analysis
+   - Threat intelligence integration
+   - Alert generation
 
-#### Multi-Source Integration
-- **IsMalicious API** (40% weight)
-  - Primary source for real-time threat detection
-  - Provides detailed reputation metrics and source categorization
+3. **Alert Service**
+   - Alert aggregation
+   - Alert persistence
+   - Notification dispatch
 
-- **AbuseIPDB** (30% weight)
-  - Confidence scoring (0-100)
-  - Community-driven abuse reports
-  - Historical abuse data
+### Analysis Pipeline
 
-- **VirusTotal** (30% weight)
-  - Multi-engine detection results
-  - File and URL scanning capabilities
-  - Comprehensive threat intelligence
-
-#### Scoring Algorithm
-1. **Data Normalization**
-   - All scores normalized to 0-1 scale
-   - AbuseIPDB scores divided by 100
-   - VirusTotal detections ratio calculated
-
-2. **Weighted Scoring**
+1. **Packet Ingestion**
    ```typescript
-   compositeScore = (
-     isMalicious * 0.4 +
-     abuseIPDB * 0.3 +
-     virusTotal * 0.3
-   )
+   async analyzePacket(rawPacket: any) {
+     // Packet validation
+     // Traffic pattern analysis
+     // Reputation checks
+     // Alert generation
+   }
    ```
 
-3. **Alert Thresholds**
-   - CRITICAL: Score >= 0.85
-   - HIGH: Score >= 0.70
-   - MEDIUM: Score >= 0.50
-   - LOW: Score >= 0.30
+2. **Reputation Analysis**
+   ```typescript
+   private async performReputationAnalysis(packet: PacketData) {
+     // Multi-source reputation checks
+     // Composite score calculation
+     // Alert threshold evaluation
+   }
+   ```
 
-4. **Minimum Requirements**
-   - At least 2 sources must report malicious activity
-   - Composite score must exceed LOW threshold (0.30)
-
-#### Alert Generation
-Alerts include:
-- Composite reputation score
-- Individual source scores
-- Number of confirming sources
-- Detailed reputation data from each source
-- Traffic pattern analysis
-- Packet metadata
+3. **Pattern Detection**
+   ```typescript
+   private async validateTrafficPattern(packet: PacketData) {
+     // Port scan detection
+     // DoS detection
+     // Brute force detection
+   }
+   ```
 
 ## API Documentation
 
-### Analysis Service
+### Analysis Service API
 
-#### Packet Analysis API
-
-**Analyze Packet**
+#### Analyze Packet
 ```http
 POST /api/analysis/packet
 Content-Type: application/json
@@ -114,159 +212,69 @@ Content-Type: application/json
     "dst_port": 80,
     "packet_size": 1024,
     "packet_type": "SYN",
-    "payload_size": 512,
     "timestamp": "2024-03-10T15:00:00Z"
 }
 ```
 
-**Response**
-```json
-{
-    "alerts": [
-        {
-            "id": "PORT_SCAN-1234567890",
-            "severity": "high",
-            "type": "PORT_SCAN",
-            "message": "Port scan detected from 192.168.1.100",
-            "timestamp": "2024-03-10T15:00:00Z"
-        }
-    ]
-}
-```
-
-**Get Service Status**
+#### Get Analysis Metrics
 ```http
-GET /api/analysis/status
-```
-
-**Response**
-```json
-{
-    "status": "running",
-    "uptime": 3600,
-    "metrics": {
-        "packetsProcessed": 1000,
-        "alertsGenerated": 5,
-        "processingTime": {
-            "avg": 0.05,
-            "p95": 0.1
-        }
-    }
-}
-```
-
-**Get Metrics**
-```http
-GET /metrics
-```
-
-Response: Prometheus-formatted metrics
-
-### Capture Service
-
-#### Configuration API
-
-**Update Capture Config**
-```http
-POST /api/capture/config
-Content-Type: application/json
-
-{
-    "interface": "eth0",
-    "promiscuous": true,
-    "filters": {
-        "ports": [80, 443, 53],
-        "protocols": ["TCP", "UDP", "ICMP"]
-    }
-}
-```
-
-**Get Capture Status**
-```http
-GET /api/capture/status
-```
-
-**Response**
-```json
-{
-    "status": "running",
-    "interface": "eth0",
-    "packetsCaptures": 5000,
-    "uptime": 3600,
-    "filters": {
-        "active": true,
-        "ports": [80, 443, 53],
-        "protocols": ["TCP", "UDP", "ICMP"]
-    }
-}
+GET /api/analysis/metrics
 ```
 
 ## Configuration
 
-### Analysis Service Environment Variables
+### Analysis Service Configuration
 ```env
-# Server Configuration
-PORT=3000
-LOG_LEVEL=info
-
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
+# API Keys
+ISMALICIOUS_API_KEY=your_key
+ISMALICIOUS_API_SECRET=your_secret
+ABUSEIPDB_API_KEY=your_key
+VIRUSTOTAL_API_KEY=your_key
 
 # Analysis Configuration
 ANALYSIS_WORKERS=4
 BATCH_SIZE=100
+CACHE_TTL=3600000
 
-# Metrics
-METRICS_PORT=9090
+# Rate Limiting
+RATE_LIMIT_MAX_REQUESTS=60
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_BURST=10
 
-# Alert Configuration
-ALERT_DB=2
-ALERT_TTL=3600
-ALERT_AGGREGATION_WINDOW=300
-
-# Email Configuration
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_SECURE=true
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASSWORD=your-app-specific-password
-```
-
-### Capture Service Environment Variables
-```env
-# Capture Configuration
-INTERFACE=eth0
-PROMISCUOUS_MODE=true
-SNAPSHOT_LENGTH=65535
-
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
-BATCH_SIZE=100
-BATCH_INTERVAL=1000
-
-# Metrics
-METRICS_PORT=9091
+# Retry Configuration
+RETRY_MAX_ATTEMPTS=3
+RETRY_INITIAL_DELAY=1000
+RETRY_MAX_DELAY=5000
+RETRY_BACKOFF_FACTOR=2
 ```
 
 ## Monitoring
 
 ### Available Metrics
 
-1. **Analysis Service**
-   - `packets_processed_total`: Total packets analyzed
-   - `alerts_generated_total`: Total alerts generated
-   - `packet_processing_duration_seconds`: Processing time histogram
-   - `packet_size_bytes`: Packet size distribution
+1. **Performance Metrics**
+   - Packet processing time
+   - API response times
+   - Cache hit/miss ratios
+   - Rate limit statistics
 
-2. **Capture Service**
-   - `packets_captured_total`: Total packets captured
-   - `batch_size_packets`: Batch size histogram
-   - `capture_errors_total`: Total capture errors
-   - `network_bandwidth_bytes`: Network bandwidth usage
+2. **Threat Metrics**
+   - Detected threats by type
+   - Alert severity distribution
+   - Source reliability scores
+   - False positive rates
 
-### Grafana Dashboard
+3. **System Metrics**
+   - Memory usage
+   - CPU utilization
+   - Network bandwidth
+   - Error rates
 
-A sample Grafana dashboard is available in `/config/grafana/dashboards/ids.json`
+### Grafana Integration
+- Pre-configured dashboards available
+- Real-time metric visualization
+- Alert tracking and analysis
+- Performance monitoring
 
 ## Development
 
@@ -283,12 +291,13 @@ go test ./...
 
 ### Building
 ```bash
-# Capture Service
-cd capture-service
-go build
 # Analysis Service
 cd analysis-service
 npm run build
+
+# Capture Service
+cd capture-service
+go build
 ```
 
 ## Contributing

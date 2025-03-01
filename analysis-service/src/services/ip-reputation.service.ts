@@ -192,7 +192,21 @@ export class IPReputationService {
 
             return result;
         } catch (error) {
-            logger.error(`Error checking IP reputation for ${ip}:`, error);
+            const errorDetails: Record<string, any> = {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                ip,
+                service: 'ip-reputation'
+            };
+
+            if (axios.isAxiosError(error)) {
+                errorDetails.status = error.response?.status;
+                errorDetails.statusText = error.response?.statusText;
+                errorDetails.url = error.config?.url;
+                errorDetails.method = error.config?.method;
+            }
+
+            logger.error(`Error checking IP reputation for ${ip}:`, errorDetails);
             return { isKnownMalicious: false };
         }
     }

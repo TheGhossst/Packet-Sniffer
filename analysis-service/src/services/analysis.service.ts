@@ -41,7 +41,16 @@ export class AnalysisService {
 
             return alerts;
         } catch (error) {
-            logger.error('Error analyzing packet:', error);
+            const errorDetails = {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                sourceIp: packet.src_ip,
+                destinationIp: packet.dst_ip,
+                protocol: packet.protocol,
+                timestamp: packet.timestamp,
+                packetType: packet.packet_type
+            };
+            logger.error('Error analyzing packet:', errorDetails);
             throw error;
         }
     }
@@ -60,7 +69,12 @@ export class AnalysisService {
                 processingTime
             };
         } catch (error) {
-            logger.error('Error fetching metrics:', error);
+            const errorDetails = {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                service: 'metrics'
+            };
+            logger.error('Error fetching metrics:', errorDetails);
             throw error;
         }
     }

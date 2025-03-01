@@ -62,7 +62,14 @@ export class MetricsService {
 
             logger.info('Metrics service initialized');
         } catch (error) {
-            logger.error('Failed to initialize metrics service:', error);
+            const errorMeta = {
+                error: error instanceof Error ? {
+                    message: error.message,
+                    name: error.name,
+                    stack: error.stack
+                } : String(error)
+            };
+            logger.error('Failed to initialize metrics service:', errorMeta);
             throw error;
         }
     }

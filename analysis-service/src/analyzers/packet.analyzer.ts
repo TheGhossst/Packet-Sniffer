@@ -46,7 +46,7 @@ export class PacketAnalyzer {
 
     async analyzePacket(packet: PacketData): Promise<Alert[]> {
         const alerts: Alert[] = [];
-        
+
         // Apply rate limiting
         const canProcess = await rateLimiter.checkLimit(`packet:${packet.src_ip}`);
         if (!canProcess) {
@@ -130,18 +130,18 @@ export class PacketAnalyzer {
     }
 
     private async detectDNSAmplification(packet: PacketData): Promise<boolean> {
-        return packet.protocol === 'UDP' && 
-               packet.dst_port === 53 && 
-               packet.packet_size > 512;
+        return packet.protocol === 'UDP' &&
+            packet.dst_port === 53 &&
+            packet.packet_size > 512;
     }
 
     private async detectICMPFlood(packet: PacketData): Promise<boolean> {
         if (packet.protocol !== 'ICMP') return false;
-        
+
         const key = `${packet.src_ip}-icmp`;
         const count = this.connectionTracker.get(key) || 0;
         this.connectionTracker.set(key, count + 1);
-        
+
         return count >= parseInt(process.env.ICMP_FLOOD_THRESHOLD || '50');
     }
 

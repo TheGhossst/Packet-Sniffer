@@ -19,7 +19,9 @@ class RedisService {
       await Promise.race([connectPromise, timeoutPromise]);
 
       this.client.on('error', (err) => {
-        logger.error('Redis error:', err);
+        logger.error('Redis error:', {
+          error: err instanceof Error ? { message: err.message, stack: err.stack } : String(err)
+        });
         this.isConnected = false;
       });
 
@@ -30,7 +32,9 @@ class RedisService {
 
       this.isConnected = true;
     } catch (error) {
-      logger.warn('Redis not available - some features will be disabled:', error);
+      logger.warn('Redis not available - some features will be disabled:', {
+        error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error)
+      });
       this.isConnected = false;
     }
   }
@@ -45,7 +49,10 @@ class RedisService {
       await this.client.subscribe(channel, callback);
       logger.info(`Subscribed to channel: ${channel}`);
     } catch (error) {
-      logger.error(`Failed to subscribe to ${channel}:`, error);
+      logger.error(`Failed to subscribe to ${channel}:`, {
+        error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error),
+        channel
+      });
     }
   }
 }

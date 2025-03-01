@@ -6,7 +6,8 @@ import { ipReputationService } from './ip-reputation.service';
 import { SAFE_NETWORKS, SafeNetwork } from '../config/safe-networks';
 import { IPReputationService } from './ip-reputation.service';
 import { metricsService } from './metrics.service';
-
+import { PacketAnalysisResult } from '../types/packet';
+import { AlertLevel, AlertCause } from '../types/alert';
 
 export enum AlertSeverity {
     LOW = 'low',
@@ -33,6 +34,8 @@ export interface Alert {
         isp?: string;
         categories?: string[];
     };
+    score?: number;
+    causes?: string[];
 }
 
 export class AlertError extends Error {
@@ -72,6 +75,7 @@ export class AlertService {
         abuseConfidenceThreshold: 25,  // Min AbuseIPDB confidence score
         minReportsRequired: 1          // Min number of positive reports from either service
     };
+    private static readonly ALERT_THRESHOLD = 75; // Score threshold for generating alerts
 
     constructor(ipReputationService: IPReputationService) {
         this.ipReputationService = ipReputationService;
@@ -113,7 +117,11 @@ export class AlertService {
 
             this.isRedisAvailable = true;
         } catch (error) {
-            logger.warn('Redis not available - running in degraded mode:', error);
+            const errorDetails = {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined
+            };
+            logger.warn('Redis not available - running in degraded mode:', errorDetails);
             this.isRedisAvailable = false;
         }
     }
@@ -134,7 +142,11 @@ export class AlertService {
             await this.emailTransporter.verify();
             logger.info('Email transporter initialized successfully');
         } catch (error) {
-            logger.error('Failed to initialize email transporter:', error);
+            const errorDetails = {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined
+            };
+            logger.error('Failed to initialize email transporter:', errorDetails);
             throw new AlertError('Email configuration failed', 'EMAIL_INIT_ERROR');
         }
     }
@@ -206,7 +218,12 @@ export class AlertService {
 
             return alert;
         } catch (error) {
-            logger.error('Failed to enrich alert with reputation data:', error);
+            const errorDetails = {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                alertId: alert.id
+            };
+            logger.error('Failed to enrich alert with reputation data:', errorDetails);
             return alert;
         }
     }
@@ -281,7 +298,11 @@ export class AlertService {
                 return (ipAddr & networkMask) === (networkIp & networkMask);
             });
         } catch (error) {
-            logger.error('Error checking safe network:', error);
+            const errorDetails = {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                ip
+            };
+            logger.error('Error checking safe network:', errorDetails);
             return false;
         }
     }
@@ -322,7 +343,12 @@ export class AlertService {
             }
             await this.notifyAlert(alert);
         } catch (error) {
-            logger.error('Error persisting alert:', error);
+            const errorDetails = {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                alertId: alert.id,
+                alertType: alert.type
+            };
+            logger.error('Error persisting alert:', errorDetails);
         }
     }
 
@@ -348,7 +374,12 @@ export class AlertService {
             }
             return newAlert;
         } catch (error) {
-            logger.error('Error aggregating alerts:', error);
+            const errorDetails = {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                alertId: newAlert.id,
+                alertType: newAlert.type
+            };
+            logger.error('Error aggregating alerts:', errorDetails);
             return newAlert;
         }
     }
@@ -406,7 +437,13 @@ export class AlertService {
                     break;
             }
         } catch (error) {
-            logger.error('Notification error:', error);
+            const errorDetails = {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                alertId: alert.id,
+                alertType: alert.type,
+                severity: alert.severity
+            };
+            logger.error('Notification error:', errorDetails);
             throw new AlertError('Failed to send notification', 'NOTIFY_ERROR');
         }
     }
@@ -422,7 +459,13 @@ export class AlertService {
                 html: emailContent
             });
         } catch (error) {
-            logger.error('Failed to send email notification:', error);
+            const errorDetails = {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                alertId: alert.id,
+                alertType: alert.type,
+                severity: alert.severity
+            };
+            logger.error('Failed to send email notification:', errorDetails);
             throw new AlertError('Email sending failed', 'EMAIL_ERROR');
         }
     }
@@ -459,51 +502,47 @@ export class AlertService {
     }
 
     private formatAlertMessage(alert: Alert): string {
-        const severity = this.getSeverityEmoji(alert.severity);
         const border = '═'.repeat(80);
-        
-        // Format message properly based on type
-        let messageText = 'No message provided';
-        if (alert.message) {
-            if (typeof alert.message === 'object') {
-                try {
-                    messageText = JSON.stringify(alert.message, null, 2);
-                } catch (error) {
-                    messageText = Object.entries(alert.message)
-                        .map(([key, value]) => `${key}: ${value}`)
-                        .join('\n  ');
-                }
-            } else {
-                messageText = String(alert.message);
-            }
-        }
+        const alertEmoji = this.getAlertEmoji(alert.severity);
 
-        // Get network provider info
-        const networkInfo = this.getNetworkProvider(alert.sourceIp);
-        const networkText = networkInfo ? ` (${networkInfo})` : '';
+        // Format the main alert section
+        let message = [
+            border,
+            `${alertEmoji} Security Alert`,
+            border,
+            `Severity: ${alert.severity}`,
+            `Source IP: ${alert.sourceIp}`,
+            `Count: ${alert.count}`,
+            `Score: ${alert.score || 'N/A'}`,
+            `Timestamp: ${alert.timestamp}`,
+            '',
+            'Packet Details:',
+            `    Source: ${alert.packets[0].src_ip}:${alert.packets[0].src_port}`,
+            `    Destination: ${alert.packets[0].dst_ip}:${alert.packets[0].dst_port}`,
+            `    Protocol: ${alert.packets[0].protocol}`,
+            `    Size: ${alert.packets[0].packet_size} bytes`,
+            `    Type: ${alert.packets[0].packet_type}`
+        ].join('\n');
 
-        let message = `
-${border}
-${severity} Security Alert: ${alert.type}
-${border}
-• Severity: ${alert.severity.toUpperCase()}
-• Source IP: ${alert.sourceIp}${networkText}
-• Event Count: ${alert.count}
-• First Seen: ${alert.timestamp}
-• Message:
-${messageText.split('\n').map(line => '  ' + line).join('\n')}`;
-
+        // Add reputation data if available
         if (alert.reputationData) {
-            const reputationText = this.formatReputationData(alert.reputationData);
-            message += `\n${reputationText}`;
+            message += '\n\n' + this.formatReputationData(alert.reputationData);
         }
 
-        if (alert.packets && alert.packets.length > 0) {
-            message += `\nPacket Information:\n${this.formatPacketDetails(alert.packets[0])}`;
+        // Add causes if present
+        if (alert.causes && alert.causes.length > 0) {
+            message += '\n\nDetection Causes:';
+            alert.causes.forEach((cause: string) => {
+                message += `\n    • ${cause}`;
+            });
         }
 
+        // Add metadata if present
         if (alert.metadata && Object.keys(alert.metadata).length > 0) {
-            message += `\nAdditional Data:\n${this.formatMetadata(alert.metadata)}`;
+            message += '\n\nAdditional Details:';
+            Object.entries(alert.metadata).forEach(([key, value]) => {
+                message += `\n    • ${key}: ${value}`;
+            });
         }
 
         message += `\n${border}`;
@@ -537,32 +576,35 @@ ${messageText.split('\n').map(line => '  ' + line).join('\n')}`;
         return lines.join('\n');
     }
 
-    private formatPacketDetails(packet: PacketData): string {
-        const details = [
-            `  • Protocol: ${packet.protocol}`,
-            `  • Source: ${packet.src_ip}:${packet.src_port}${this.getNetworkProvider(packet.src_ip) ? ` (${this.getNetworkProvider(packet.src_ip)})` : ''}`,
-            `  • Destination: ${packet.dst_ip}:${packet.dst_port}${this.getNetworkProvider(packet.dst_ip) ? ` (${this.getNetworkProvider(packet.dst_ip)})` : ''}`,
-            `  • Size: ${packet.packet_size} bytes`,
-            `  • Type: ${packet.packet_type}`,
-            `  • Timestamp: ${packet.timestamp}`
-        ];
-        return details.join('\n');
-    }
-
-    private getSeverityEmoji(severity: AlertSeverity): string {
+    private getAlertEmoji(severity: AlertSeverity): string {
         switch (severity) {
-            case AlertSeverity.CRITICAL: return '🚨';
-            case AlertSeverity.HIGH: return '⚠️';
-            case AlertSeverity.MEDIUM: return '⚡';
-            case AlertSeverity.LOW: return 'ℹ️';
-            default: return '🔔';
+            case AlertSeverity.CRITICAL:
+                return '🚨';
+            case AlertSeverity.HIGH:
+                return '⚠️';
+            case AlertSeverity.MEDIUM:
+                return '⚡';
+            case AlertSeverity.LOW:
+                return 'ℹ️';
+            default:
+                return '🔔';
         }
     }
 
-    private formatMetadata(metadata: Record<string, any>): string {
-        return Object.entries(metadata)
-            .map(([key, value]) => `• ${key}: ${value}`)
-            .join('\n');
+    private formatAlertCauses(causes: AlertCause[]): string[] {
+        if (!Array.isArray(causes)) {
+            return ['Unknown cause'];
+        }
+
+        return causes.map(cause => {
+            if (typeof cause === 'string') {
+                return cause;
+            }
+            if (typeof cause === 'object' && cause !== null) {
+                return cause.reason || JSON.stringify(cause);
+            }
+            return 'Unknown cause';
+        }).filter(Boolean);
     }
 
     private isRateLimited(sourceIp: string): boolean {
@@ -747,7 +789,13 @@ ${messageText.split('\n').map(line => '  ' + line).join('\n')}`;
             metricsService.incrementPacketsProcessed();
 
         } catch (error) {
-            logger.error('Error in validateAndGenerateAlert:', error);
+            const errorDetails = {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                sourceIp,
+                destIp,
+                stack: error instanceof Error ? error.stack : undefined
+            };
+            logger.error('Error in validateAndGenerateAlert:', errorDetails);
             throw error;
         }
     }
@@ -889,6 +937,47 @@ ${messageText.split('\n').map(line => '  ' + line).join('\n')}`;
         if (vtScore >= 2 || abuseScore >= 25) return 'MEDIUM';
         if (vtScore >= 1 || abuseScore >= 10) return 'LOW';
         return 'INFO';
+    }
+
+    public generateAlert(analysisResult: PacketAnalysisResult): void {
+        const { score, packet, causes } = analysisResult;
+
+        // Only generate alerts for high scores
+        if (score >= AlertService.ALERT_THRESHOLD) {
+            // Format the causes properly
+            const formattedCauses = this.formatAlertCauses(causes);
+
+            // Create a properly structured alert object
+            const alert: Alert = {
+                id: `alert-${Date.now()}-${packet.src_ip}`,
+                timestamp: new Date().toISOString(),
+                severity: this.determineAlertLevel(score) as AlertSeverity,
+                type: 'PACKET_ANALYSIS',
+                message: `Suspicious packet detected from ${packet.src_ip}`,
+                sourceIp: packet.src_ip,
+                count: 1,
+                packets: [packet],
+                metadata: {
+                    source: packet.src_ip,
+                    destination: packet.dst_ip,
+                    protocol: packet.protocol,
+                    size: packet.packet_size
+                },
+                score,
+                causes: formattedCauses
+            };
+
+            // Format and log the alert
+            const formattedAlert = this.formatAlertMessage(alert);
+            logger.warn('\n' + formattedAlert);
+        }
+    }
+
+    private determineAlertLevel(score: number): AlertLevel {
+        if (score >= 90) return 'CRITICAL';
+        if (score >= 80) return 'HIGH';
+        if (score >= 70) return 'MEDIUM';
+        return 'LOW';
     }
 }
 
