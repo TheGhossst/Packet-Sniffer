@@ -18,7 +18,6 @@ ${chalk.blue('│')} ${chalk.cyan('Size')}            : ${chalk.yellow(packet.pa
 ${chalk.blue('│')} ${chalk.cyan('Type')}            : ${chalk.yellow(packet.packet_type)}                                      ${chalk.blue('│')}
 ${chalk.blue('│')} ${chalk.cyan('Timestamp')}       : ${chalk.yellow(timestamp)}                      ${chalk.blue('│')}`;
 
-    // Add threat analysis if available
     if (maliciousCheck) {
       const threatColor = maliciousCheck.isMalicious ? chalk.red : chalk.green;
       const threatStatus = maliciousCheck.isMalicious ? 'Unsafe' : 'Safe';

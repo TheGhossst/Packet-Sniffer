@@ -1,5 +1,6 @@
 import { PacketData, MaliciousCheckResult } from '../types/packet.types.js';
 import { ipsumFeedService } from './ipsum-feed.service.js';
+import { metricsService } from './metrics.service.js';
 
 class MaliciousCheckService {
   /**
@@ -13,6 +14,7 @@ class MaliciousCheckService {
     // Check if the IP is in our safe list first
     if (ipsumFeedService.isSafeIp(ipToCheck)) {
       console.log(`[Safe IP] IP: ${ipToCheck} | Marked as safe`);
+      metricsService.incrementSafeListHits();
       
       return {
         isMalicious: false,
@@ -34,6 +36,7 @@ class MaliciousCheckService {
     
     if (ipsumResult.isMalicious) {
       console.log(`[Ipsum Feed] IP: ${ipToCheck} | Malicious: true | Score: ${ipsumResult.score}`);
+      metricsService.incrementIpsumBlacklistHits();
       
       return {
         isMalicious: true,

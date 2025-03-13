@@ -53,7 +53,6 @@ class IpsumFeedService {
       console.log(`[Ipsum Feed] Using cached data from ${this.lastUpdated?.toLocaleString()}`);
     }
 
-    // Schedule regular updates
     const updateInterval = this.updateIntervalMs / (1000 * 60 * 60);
     console.log(`[Ipsum Feed] Scheduled automatic updates every ${updateInterval} hours`);
     setInterval(() => this.updateFeed(), this.updateIntervalMs);
@@ -128,7 +127,6 @@ class IpsumFeedService {
       }
     } catch (error) {
       console.error(`[Ipsum Feed] Error loading safe IPs:`, error);
-      // Initialize with empty set if there was an error
       this.safeIps = new Set();
     }
   }
