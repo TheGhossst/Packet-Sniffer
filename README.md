@@ -27,13 +27,12 @@ An advanced Intrusion Detection System (IDS) that combines real-time packet capt
 - Traffic pattern analysis
 
 ### 2. Multi-Source Threat Intelligence
-- **IsMalicious API Integration (40% weight)**
-  - Real-time threat detection
-  - Detailed source categorization
-  - Comprehensive reputation metrics
-  - WHOIS information
-  - Geographical data
-  - Similar domain analysis
+- **Ipsum Feed Integration (40% weight)**
+  - Direct integration with [stamparm/ipsum](https://github.com/stamparm/ipsum) repository
+  - Local caching of malicious IP database
+  - Score-based threat level determination
+  - Automatic 24-hour refresh cycle
+  - Safe IP list management
 
 - **AbuseIPDB Integration (30% weight)**
   - Confidence scoring (0-100)
@@ -49,7 +48,7 @@ An advanced Intrusion Detection System (IDS) that combines real-time packet capt
 - **Composite Reputation Scoring**
   ```typescript
   compositeScore = (
-    isMalicious * 0.4 +
+    ipsumFeed * 0.4 +
     abuseIPDB * 0.3 +
     virusTotal * 0.3
   )
@@ -61,13 +60,20 @@ An advanced Intrusion Detection System (IDS) that combines real-time packet capt
   - MEDIUM: Score ≥ 0.50 (requires 2+ sources)
   - LOW: Score ≥ 0.30 (requires 1+ source)
 
-### 4. Advanced Error Handling
+### 4. Status Indicators
+- **Clear Status Display**
+  - "Safe" status for trusted or non-malicious IPs
+  - "Unsafe" status for known malicious IPs
+  - Detailed threat level descriptions
+  - Source identification (Ipsum feed, safe list)
+
+### 5. Advanced Error Handling
 - Custom error types for different scenarios
 - Detailed error context
 - Error chaining
 - Structured logging
 
-### 5. Performance Features
+### 6. Performance Features
 - **Caching System**
   - In-memory caching for reputation data
   - Configurable TTL (default: 1 hour)
@@ -85,7 +91,13 @@ An advanced Intrusion Detection System (IDS) that combines real-time packet capt
   - Timeout handling
   - Circuit breaking
 
-### 6. Traffic Pattern Analysis
+- **IP Safelist Management**
+  - Persistent storage of trusted IPs
+  - Add/remove APIs for safe IP management
+  - Automatic exclusion from threat checks
+  - Regular backup of safe IP database
+
+### 7. Traffic Pattern Analysis
 - **Pattern Detection**
   - Port scanning patterns
   - DoS/DDoS patterns
@@ -97,7 +109,7 @@ An advanced Intrusion Detection System (IDS) that combines real-time packet capt
   - Protocol validation
   - Port-protocol correlation
 
-### 7. Metrics and Monitoring
+### 8. Metrics and Monitoring
 - **Detailed Metrics**
   - API performance metrics
   - Cache efficiency metrics
@@ -160,7 +172,13 @@ An advanced Intrusion Detection System (IDS) that combines real-time packet capt
    - Threat intelligence integration
    - Alert generation
 
-3. **Alert Service**
+3. **Analysis Service 2.0**
+   - Enhanced threat detection with Ipsum feed
+   - Safe/Unsafe status indicators
+   - IP safelist management
+   - Improved logging and reporting
+
+4. **Alert Service**
    - Alert aggregation
    - Alert persistence
    - Notification dispatch
@@ -226,8 +244,7 @@ GET /api/analysis/metrics
 ### Analysis Service Configuration
 ```env
 # API Keys
-ISMALICIOUS_API_KEY=your_key
-ISMALICIOUS_API_SECRET=your_secret
+IPSUM_FEED_API_KEY=your_key
 ABUSEIPDB_API_KEY=your_key
 VIRUSTOTAL_API_KEY=your_key
 
@@ -303,8 +320,3 @@ go build
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-

@@ -1,12 +1,14 @@
 import { redisService } from './redis.service.js';
 import { maliciousCheckService } from './malicious-check.service.js';
 import { packetDisplayService } from './packet-display.service.js';
+import { ipsumFeedService } from './ipsum-feed.service.js';
 import { BatchData, PacketData } from '../types/packet.types.js';
 
 class AnalysisService {
   /**
    * Start the analysis service
    * - Connect to Redis
+   * - Initialize the Ipsum feed service
    * - Subscribe to the packet-stream channel
    * - Process incoming packets
    */
@@ -14,11 +16,12 @@ class AnalysisService {
     console.info('Starting simplified analysis service...');
 
     try {
-      // Connect to Redis
       const connected = await redisService.connect();
 
       if (connected) {
-        // Subscribe to the packet stream
+        await ipsumFeedService.initialize();
+        console.info('Ipsum feed service initialized');
+
         await redisService.subscribe('packet-stream', async (message: string) => {
           await this.processPacket(message);
         });
@@ -39,13 +42,11 @@ class AnalysisService {
    */
   private async processPacket(message: string): Promise<void> {
     try {
-      // Parse the message as JSON
       const data: BatchData = JSON.parse(message);
 
       console.info(`\nProcessing batch ${data.batchId} with ${data.packets.length} packets`);
       console.info(`Timestamp: ${data.timestamp}`);
 
-      // Process each packet in the batch
       for (const packet of data.packets) {
         await this.analyzePacket(packet);
       }

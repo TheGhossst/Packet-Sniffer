@@ -1,51 +1,96 @@
-import axios from 'axios';
 import { PacketData, MaliciousCheckResult } from '../types/packet.types.js';
+import { ipsumFeedService } from './ipsum-feed.service.js';
 
 class MaliciousCheckService {
-  private apiUrl: string;
-
-  constructor() {
-    this.apiUrl = 'https://ismalicious.com/api/check?';
-  }
-
   /**
-   * Checks if a packet is malicious by calling the isMalicious API
+   * Checks if a packet is malicious using the Ipsum feed and safe IPs list
    * @param packet The packet data to check
    * @returns Result containing whether the packet is malicious and additional details
    */
   async checkPacket(packet: PacketData): Promise<MaliciousCheckResult> {
-    try {
-      const ipToCheck = packet.dst_ip;
-
-      const response = await axios.get(`${this.apiUrl}ip=${ipToCheck}`, {
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-
-      console.log(`[isMalicious Check] IP: ${ipToCheck} | Status: ${response.status} | Malicious: ${response.data.malicious || false}`);
-
-      return {
-        isMalicious: response.data.malicious || false,
-        reasons: response.data.sources?.map((source: any) => ({
-          source: source.name,
-          category: source.category || 'unknown',
-          description: `Detected by ${source.name} (${source.type})`
-        })) || [],
-        threatLevel: response.data.reputation?.malicious > 3 ? 'high' : 'medium',
-        timestamp: new Date().toISOString()
-      };
-    } catch (error) {
-      const status = (error as any).response?.status || 'unknown';
-      console.error(`[isMalicious Check Error] Status: ${status} | Request failed for IP: ${packet.dst_ip}`);
-
+    const ipToCheck = packet.dst_ip;
+    
+    // Check if the IP is in our safe list first
+    if (ipsumFeedService.isSafeIp(ipToCheck)) {
+      console.log(`[Safe IP] IP: ${ipToCheck} | Marked as safe`);
+      
       return {
         isMalicious: false,
-        reasons: [],
-        threatLevel: 'unknown',
-        timestamp: new Date().toISOString()
+        reasons: [{
+          source: 'safe-list',
+          category: 'trusted',
+          description: 'IP is in the trusted safe list'
+        }],
+        threatLevel: 'safe',
+        timestamp: new Date().toISOString(),
+        score: 0,
+        details: {
+          source: 'safe-list'
+        }
       };
     }
+
+    const ipsumResult = ipsumFeedService.checkIp(ipToCheck);
+    
+    if (ipsumResult.isMalicious) {
+      console.log(`[Ipsum Feed] IP: ${ipToCheck} | Malicious: true | Score: ${ipsumResult.score}`);
+      
+      return {
+        isMalicious: true,
+        reasons: [{
+          source: 'ipsum',
+          category: 'blacklist',
+          description: `IP appears on ${ipsumResult.score} blacklists according to Ipsum feed`
+        }],
+        threatLevel: ipsumResult.score > 5 ? 'high' : 'medium',
+        timestamp: new Date().toISOString(),
+        score: ipsumResult.score,
+        details: {
+          source: 'ipsum',
+          blacklistCount: ipsumResult.score
+        }
+      };
+    }
+
+    // If not found in Ipsum and not in safe list, mark as unknown
+    return {
+      isMalicious: false,
+      reasons: [{
+        source: 'ipsum',
+        category: 'unknown',
+        description: 'IP not found in any blacklist'
+      }],
+      threatLevel: 'unknown',
+      timestamp: new Date().toISOString(),
+      score: 0,
+      details: {
+        source: 'ipsum'
+      }
+    };
+  }
+
+  /**
+   * Add an IP to the safe list
+   * @param ip The IP address to add to the safe list
+   */
+  async addSafeIp(ip: string): Promise<void> {
+    await ipsumFeedService.addSafeIp(ip);
+  }
+
+  /**
+   * Remove an IP from the safe list
+   * @param ip The IP address to remove from the safe list
+   */
+  async removeSafeIp(ip: string): Promise<void> {
+    await ipsumFeedService.removeSafeIp(ip);
+  }
+
+  /**
+   * Get all safe IPs
+   * @returns Array of safe IPs
+   */
+  getSafeIps(): string[] {
+    return ipsumFeedService.getSafeIps();
   }
 }
 

@@ -21,8 +21,14 @@ ${chalk.blue('│')} ${chalk.cyan('Timestamp')}       : ${chalk.yellow(timestamp
     // Add threat analysis if available
     if (maliciousCheck) {
       const threatColor = maliciousCheck.isMalicious ? chalk.red : chalk.green;
-      const threatStatus = maliciousCheck.isMalicious ? 'MALICIOUS' : 'BENIGN';
-      const threatLevel = maliciousCheck.threatLevel || 'unknown';
+      const threatStatus = maliciousCheck.isMalicious ? 'Unsafe' : 'Safe';
+      
+      let threatLevel = maliciousCheck.threatLevel || 'unknown';
+      if (threatLevel === 'unknown' && !maliciousCheck.isMalicious) {
+        threatLevel = 'not in blacklist';
+      } else if (threatLevel === 'safe') {
+        threatLevel = 'trusted';
+      }
 
       output += `
 ${chalk.blue('├───────────────────────────────────────────────────────────────────────┤')}
@@ -30,6 +36,17 @@ ${chalk.blue('│')} ${chalk.white.bold('THREAT ANALYSIS')}                     
 ${chalk.blue('├───────────────────────────────────────────────────────────────────────┤')}
 ${chalk.blue('│')} ${chalk.cyan('Status')}          : ${threatColor(threatStatus.padEnd(10))}                                      ${chalk.blue('│')}
 ${chalk.blue('│')} ${chalk.cyan('Threat Level')}    : ${threatColor(threatLevel.padEnd(10))}                                      ${chalk.blue('│')}`;
+
+      if (maliciousCheck.details?.source) {
+        const source = maliciousCheck.details.source;
+        output += `
+${chalk.blue('│')} ${chalk.cyan('Source')}          : ${threatColor(source.padEnd(10))}                                      ${chalk.blue('│')}`;
+      }
+      
+      if (maliciousCheck.score !== undefined) {
+        output += `
+${chalk.blue('│')} ${chalk.cyan('Score')}           : ${threatColor(String(maliciousCheck.score).padEnd(10))}                                      ${chalk.blue('│')}`;
+      }
 
       if (maliciousCheck.isMalicious && maliciousCheck.reasons && maliciousCheck.reasons.length > 0) {
         output += `

@@ -15,9 +15,15 @@ export interface BatchData {
   packets: PacketData[];
 }
 
+export interface MaliciousReason {
+  source: string;
+  category: string;
+  description: string;
+}
+
 export interface MaliciousCheckResult {
   isMalicious: boolean;
-  reasons?: string[];
+  reasons?: MaliciousReason[] | string[];
   threatLevel?: string;
   timestamp?: string;
   score?: number;
