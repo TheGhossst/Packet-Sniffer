@@ -1,322 +1,496 @@
-# Network IDS with Threat Intelligence
+# Network Analysis Service
 
-An advanced Intrusion Detection System (IDS) that combines real-time packet capture with multi-source threat intelligence APIs for comprehensive network security monitoring.
+An Netword Analysis Service that combines real-time packet capture with multi-source threat intelligence APIs for comprehensive network security monitoring.
 
 ## Table of Contents
+- [Overview](#overview)
 - [Features](#features)
+- [System Architecture](#system-architecture)
 - [Prerequisites](#prerequisites)
-- [Setup Instructions](#setup-instructions)
-- [Architecture](#architecture)
-  - [Core Components](#core-components)
-  - [Threat Intelligence Integration](#threat-intelligence-integration)
-  - [Analysis Pipeline](#analysis-pipeline)
-- [API Documentation](#api-documentation)
+- [Installation](#installation)
+  - [Installation of Dependencies](#installation-of-dependencies)
+  - [Setting Up Capture Service](#setting-up-capture-service)
+  - [Setting Up Analysis Service v2](#setting-up-analysis-service-v2)
+  - [Setting Up Frontend](#setting-up-frontend)
 - [Configuration](#configuration)
-- [Monitoring](#monitoring)
+- [Running the System](#running-the-system)
+- [API Documentation](#api-documentation)
 - [Development](#development)
+- [Troubleshooting](#troubleshooting)
+
+## Overview
+
+This Network Analysis Service project integrates real-time packet capture with threat intelligence to provide comprehensive network security monitoring. The system consists of three main components:
+
+1. **Capture Service**: A Go-based service that captures network packets in real-time
+2. **Analysis Service v2**: A Node.js service that analyzes captured packets against various threat intelligence sources
+3. **Frontend**: A Next.js web application that displays the analysis results and system metrics
 
 ## Features
 
-### 1. Advanced Packet Analysis
+### Capture Service Features
 - Real-time packet capture and analysis
 - Support for both IPv4 and IPv6
 - Protocol-specific validation
-- Port scanning detection
-- DoS/DDoS attack detection
-- Brute force attempt detection
-- Traffic pattern analysis
+- Packet filtering based on configurable rules
+- High-performance packet processing
+- Redis integration for packet queueing
 
-### 2. Multi-Source Threat Intelligence
-- **Ipsum Feed Integration (40% weight)**
-  - Direct integration with [stamparm/ipsum](https://github.com/stamparm/ipsum) repository
+### Analysis Service v2 Features
+- **Enhanced Threat Intelligence**
+  - Direct integration with [stamparm/ipsum](https://github.com/stamparm/ipsum) repository for malicious IP detection
   - Local caching of malicious IP database
   - Score-based threat level determination
   - Automatic 24-hour refresh cycle
-  - Safe IP list management
+  - Detailed logging of database updates
 
-- **AbuseIPDB Integration (30% weight)**
-  - Confidence scoring (0-100)
-  - Historical abuse reports
-  - Community-driven reporting
+- **Safe IP Management**
+  - Maintain and persist a list of trusted IP addresses
+  - Automatically exclude safe IPs from malicious detection
+  - Add/remove IPs from the safe list via API
+  - Persistence across service restarts
 
-- **VirusTotal Integration (30% weight)**
-  - Multi-engine detection
-  - File and URL scanning
-  - Comprehensive threat data
+- **Improved Status Display**
+  - Clear "Safe" or "Unsafe" status indicators (replacing the previous "BENIGN"/"MALICIOUS" labels)
+  - Detailed threat level reporting
+  - Enhanced logging for all detection events
 
-### 3. Sophisticated Scoring System
-- **Composite Reputation Scoring**
-  ```typescript
-  compositeScore = (
-    ipsumFeed * 0.4 +
-    abuseIPDB * 0.3 +
-    virusTotal * 0.3
-  )
-  ```
+- **Advanced Error Handling**
+  - Custom error types for different scenarios
+  - Detailed error context
+  - Error chaining
+  - Structured logging
 
-- **Alert Severity Thresholds**
-  - CRITICAL: Score ≥ 0.85 (requires 3+ sources)
-  - HIGH: Score ≥ 0.70 (requires 2+ sources)
-  - MEDIUM: Score ≥ 0.50 (requires 2+ sources)
-  - LOW: Score ≥ 0.30 (requires 1+ source)
-
-### 4. Status Indicators
-- **Clear Status Display**
-  - "Safe" status for trusted or non-malicious IPs
-  - "Unsafe" status for known malicious IPs
-  - Detailed threat level descriptions
-  - Source identification (Ipsum feed, safe list)
-
-### 5. Advanced Error Handling
-- Custom error types for different scenarios
-- Detailed error context
-- Error chaining
-- Structured logging
-
-### 6. Performance Features
-- **Caching System**
+- **Performance Features**
   - In-memory caching for reputation data
   - Configurable TTL (default: 1 hour)
   - Cache hit/miss metrics
+  - Rate limiting with token bucket algorithm
 
-- **Rate Limiting**
-  - Token bucket algorithm
-  - Configurable limits per API
-  - Burst handling
-  - Automatic backoff
+### Frontend Features
+- Real-time packet monitoring dashboard
+- Threat visualization and statistics
+- Detailed packet inspection views
+- Service metrics and performance monitoring
+- Responsive design for various device sizes
+- Dark/light mode support
 
-- **Retry Mechanism**
-  - Exponential backoff
-  - Configurable retry attempts
-  - Timeout handling
-  - Circuit breaking
+## System Architecture
 
-- **IP Safelist Management**
-  - Persistent storage of trusted IPs
-  - Add/remove APIs for safe IP management
-  - Automatic exclusion from threat checks
-  - Regular backup of safe IP database
+```
+┌─────────────────┐      ┌──────────────────┐      ┌────────────────┐
+│                 │      │                  │      │                │
+│  Capture        │─────▶│  Analysis        │─────▶│  Frontend      │
+│  Service (Go)   │      │  Service v2 (TS) │      │  (Next.js)     │
+│                 │      │                  │      │                │
+└─────────────────┘      └──────────────────┘      └────────────────┘
+        │                         │                        │
+        │                         │                        │
+        ▼                         ▼                        ▼
+┌─────────────────┐      ┌──────────────────┐      ┌────────────────┐
+│  Network        │      │  Threat Intel    │      │  User          │
+│  Interface      │      │  Sources         │      │  Interface     │
+│                 │      │  (Ipsum Feed)    │      │                │
+└─────────────────┘      └──────────────────┘      └────────────────┘
+```
 
-### 7. Traffic Pattern Analysis
-- **Pattern Detection**
-  - Port scanning patterns
-  - DoS/DDoS patterns
-  - Brute force patterns
-  - Suspicious port combinations
-
-- **Service Recognition**
-  - Well-known service detection
-  - Protocol validation
-  - Port-protocol correlation
-
-### 8. Metrics and Monitoring
-- **Detailed Metrics**
-  - API performance metrics
-  - Cache efficiency metrics
-  - Processing time metrics
-  - Alert distribution metrics
-
-- **Source Performance Tracking**
-  - True/false positive tracking
-  - Source accuracy metrics
-  - Dynamic weight adjustment
+### Data Flow
+1. Capture Service monitors network interfaces and captures packets
+2. Captured packets are sent to Analysis Service v2
+3. Analysis Service v2 checks packets against threat intelligence sources
+4. Results are formatted with "Safe" or "Unsafe" status
+5. Frontend displays the results in real-time
 
 ## Prerequisites
 
-- Go (latest stable version)
-- Node.js (v18+)
-- Redis
-- Npcap (for Windows)
-- Docker (optional)
+### System Requirements
+- **Operating System**: Windows 10/11, Linux (Ubuntu 18.04+ recommended), or macOS 10.15+
+- **RAM**: Minimum 4GB, recommended 8GB+
+- **Disk Space**: At least 1GB free space
+- **Network**: Administrative access to network interfaces
 
-## Setup Instructions
+### Software Requirements
+- **Go**: v1.17 or later
+  - [Download Go](https://golang.org/dl/)
+  - Verify installation: `go version`
 
-1. Install Npcap:
-   ```bash
-   # Download from Npcap website
-   https://npcap.com/#download
-   # Install with WinPcap compatibility mode
-   ```
+- **Node.js**: v16.0 or later (v18+ recommended)
+  - [Download Node.js](https://nodejs.org/en/download/)
+  - Verify installation: `node -v` and `npm -v`
 
-2. Install Redis:
-   ```bash
-   # Using Docker
-   docker run --name redis -p 6379:6379 -d redis
-   ```
+- **Redis**: v6.0 or later
+  - Windows: [Download Redis for Windows](https://github.com/tporadowski/redis/releases)
+  - Linux: `sudo apt install redis-server`
+  - macOS: `brew install redis`
+  - Or use Docker: `docker run --name redis -p 6379:6379 -d redis`
+  - Verify installation: `redis-cli ping` (should return "PONG")
 
-3. Configure Environment Variables:
-   ```bash
-   # Analysis Service
-   cp analysis-service/.env.example analysis-service/.env
-   # Edit .env with your API keys and configuration
-   ```
+- **Npcap** (for Windows):
+  - [Download from Npcap website](https://npcap.com/#download)
+  - Install with WinPcap compatibility mode
 
-4. Start Services:
-   ```bash
-   # Using Docker Compose
-   docker-compose up -d
-   ```
+- **libpcap** (for Linux/macOS):
+  - Linux: `sudo apt-get install libpcap-dev`
+  - macOS: `brew install libpcap`
 
-## Architecture
+- **Git**:
+  - [Download Git](https://git-scm.com/downloads)
+  - Verify installation: `git --version`
 
-### Core Components
+- **Docker** (optional, for containerized deployment):
+  - [Download Docker](https://www.docker.com/products/docker-desktop)
+  - Verify installation: `docker --version`
 
-1. **Capture Service**
-   - Network packet capture
-   - Initial packet filtering
-   - Packet batching and queueing
+## Installation
 
-2. **Analysis Service**
-   - Packet validation and normalization
-   - Traffic pattern analysis
-   - Threat intelligence integration
-   - Alert generation
+### Installation of Dependencies
 
-3. **Analysis Service 2.0**
-   - Enhanced threat detection with Ipsum feed
-   - Safe/Unsafe status indicators
-   - IP safelist management
-   - Improved logging and reporting
-
-4. **Alert Service**
-   - Alert aggregation
-   - Alert persistence
-   - Notification dispatch
-
-### Analysis Pipeline
-
-1. **Packet Ingestion**
-   ```typescript
-   async analyzePacket(rawPacket: any) {
-     // Packet validation
-     // Traffic pattern analysis
-     // Reputation checks
-     // Alert generation
-   }
-   ```
-
-2. **Reputation Analysis**
-   ```typescript
-   private async performReputationAnalysis(packet: PacketData) {
-     // Multi-source reputation checks
-     // Composite score calculation
-     // Alert threshold evaluation
-   }
-   ```
-
-3. **Pattern Detection**
-   ```typescript
-   private async validateTrafficPattern(packet: PacketData) {
-     // Port scan detection
-     // DoS detection
-     // Brute force detection
-   }
-   ```
-
-## API Documentation
-
-### Analysis Service API
-
-#### Analyze Packet
-```http
-POST /api/analysis/packet
-Content-Type: application/json
-
-{
-    "src_ip": "192.168.1.100",
-    "dst_ip": "10.0.0.1",
-    "protocol": "TCP",
-    "src_port": 12345,
-    "dst_port": 80,
-    "packet_size": 1024,
-    "packet_type": "SYN",
-    "timestamp": "2024-03-10T15:00:00Z"
-}
+#### 1. Clone the Repository
+```bash
+git clone https://github.com/TheGhossst/Packet-Sniffer.git
+cd Packet-Sniffer
 ```
 
-#### Get Analysis Metrics
-```http
-GET /api/analysis/metrics
+#### 2. Install Global Dependencies (if not already installed)
+```bash
+# Install TypeScript globally
+npm install -g typescript
+
+# Install nodemon for development (optional)
+npm install -g nodemon
+```
+
+### Setting Up Capture Service
+
+The capture service is written in Go and responsible for capturing network packets.
+
+#### 1. Navigate to the Capture Service Directory
+```bash
+cd capture-service
+```
+
+#### 2. Install Go Dependencies
+```bash
+go mod download
+```
+
+#### 3. Build the Capture Service
+```bash
+go build -o capture-service main.go
+```
+
+#### 4. Configure Capture Service
+Create a configuration file in the `config` directory if it doesn't exist:
+```bash
+# For Windows
+copy config\config.example.json config\config.json
+
+# For Linux/macOS
+cp config/config.example.json config/config.json
+```
+Edit the configuration file to specify your network interface and other settings.
+#### 5. Run Capture Service
+```bash
+.\capture-service.exe
+```
+### Setting Up Analysis Service v2
+
+The analysis service v2 is a Node.js application that processes and analyzes the captured packets.
+
+#### 1. Navigate to the Analysis Service v2 Directory
+```bash
+cd ../analysis-service-2
+```
+
+#### 2. Install Node.js Dependencies
+```bash
+npm install
+```
+
+#### 3. Create Data Directories
+Ensure the data directories exist:
+```bash
+# For Windows
+mkdir -p data\safe-ips
+mkdir -p data\ipsum-feed
+
+# For Linux/macOS
+mkdir -p data/safe-ips
+mkdir -p data/ipsum-feed
+```
+
+#### 4. Start the Analysis Service
+```bash
+npm run start
+```
+
+### Setting Up Frontend
+
+The frontend is a Next.js application that provides the user interface.
+
+#### 1. Navigate to the Frontend Directory
+```bash
+cd ../frontend
+```
+
+#### 2. Install Node.js Dependencies
+```bash
+npm install
+```
+
+#### 3. Build the Next.js Application
+```bash
+npm run dev
 ```
 
 ## Configuration
 
-### Analysis Service Configuration
-```env
-# API Keys
-IPSUM_FEED_API_KEY=your_key
-ABUSEIPDB_API_KEY=your_key
-VIRUSTOTAL_API_KEY=your_key
+### Capture Service Configuration
+Edit the `capture-service/config/config.json` file:
 
-# Analysis Configuration
-ANALYSIS_WORKERS=4
-BATCH_SIZE=100
-CACHE_TTL=3600000
-
-# Rate Limiting
-RATE_LIMIT_MAX_REQUESTS=60
-RATE_LIMIT_WINDOW_MS=60000
-RATE_LIMIT_MAX_BURST=10
-
-# Retry Configuration
-RETRY_MAX_ATTEMPTS=3
-RETRY_INITIAL_DELAY=1000
-RETRY_MAX_DELAY=5000
-RETRY_BACKOFF_FACTOR=2
+```json
+{
+  "interface": "your-interface-name",  // e.g., "eth0" for Linux, "Ethernet" for Windows
+  "promiscuous": true,
+  "snaplen": 1600,
+  "redis": {
+    "host": "localhost",
+    "port": 6379,
+    "password": "",
+    "db": 0
+  },
+  "filters": {
+    "enabled": true,
+    "file": "filters/default.json"
+  },
+  "metrics": {
+    "enabled": true,
+    "port": 9090
+  }
+}
 ```
 
-## Monitoring
+### Analysis Service v2 Configuration
+Create a `.env` file in the `analysis-service-2` directory:
 
-### Available Metrics
+```ini
+# Analysis Service v2 Configuration
+PORT=3001
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+IPSUM_FEED_URL=https://raw.githubusercontent.com/stamparm/ipsum/master/ipsum.txt
+IPSUM_REFRESH_INTERVAL=86400000  # 24 hours in milliseconds
+SAFE_IPS_FILE=./data/safe-ips/safe-ips.json
+```
 
-1. **Performance Metrics**
-   - Packet processing time
-   - API response times
-   - Cache hit/miss ratios
-   - Rate limit statistics
+### Frontend Configuration
+Create a `.env.local` file in the `frontend` directory:
 
-2. **Threat Metrics**
-   - Detected threats by type
-   - Alert severity distribution
-   - Source reliability scores
-   - False positive rates
+```ini
+# Frontend Configuration
+NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_METRICS_URL=http://localhost:9090
+```
 
-3. **System Metrics**
-   - Memory usage
-   - CPU utilization
-   - Network bandwidth
-   - Error rates
+## Running the System
 
-### Grafana Integration
-- Pre-configured dashboards available
-- Real-time metric visualization
-- Alert tracking and analysis
-- Performance monitoring
+### Running with Docker Compose (Recommended)
+If you have Docker installed, you can use Docker Compose to run all services:
+
+```bash
+# From the project root directory
+docker-compose up -d
+```
+
+### Running Services Individually
+
+#### 1. Start Redis
+```bash
+# If installed as a service
+sudo service redis-server start  # Linux
+brew services start redis  # macOS
+
+# Or run with Docker
+docker run --name redis -p 6379:6379 -d redis
+```
+
+#### 2. Start the Capture Service
+```bash
+# Navigate to capture-service directory
+cd capture-service
+
+# Run the service (Windows)
+.\capture-service.exe
+
+# Run the service (Linux/macOS)
+sudo ./capture-service  # sudo is needed for network interface access
+```
+
+#### 3. Start the Analysis Service v2
+```bash
+# Navigate to analysis-service-2 directory
+cd analysis-service-2
+
+# Run in production mode
+npm start
+
+# Or run in development mode
+npm run dev
+```
+
+#### 4. Start the Frontend
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Run in production mode
+npm start
+
+# Or run in development mode
+npm run dev
+```
+
+### Access the Application
+Open your browser and navigate to:
+- Frontend: [http://localhost:3000](http://localhost:3000)
+- Analysis Service API: [http://localhost:3001](http://localhost:3001)
+- Metrics (if enabled): [http://localhost:9090](http://localhost:9090)
+
+## API Documentation
+
+### Analysis Service v2 API Endpoints
+
+#### Check Packet Status
+```
+GET /api/check-packet
+```
+Request body:
+```json
+{
+  "sourceIp": "192.168.1.1",
+  "destinationIp": "8.8.8.8",
+  "sourcePort": 54321,
+  "destinationPort": 80,
+  "protocol": "TCP"
+}
+```
+
+Response:
+```json
+{
+  "status": "Safe", // or "Unsafe"
+  "threatLevel": "LOW", // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  "reason": {
+    "source": "ipsum-feed",
+    "score": 0.4,
+    "details": "IP found in malicious database with score 4/10"
+  }
+}
+```
+
+#### Manage Safe IPs
+
+Add IP to safe list:
+```
+POST /api/safe-ips
+```
+Request body:
+```json
+{
+  "ip": "192.168.1.5"
+}
+```
+
+Remove IP from safe list:
+```
+DELETE /api/safe-ips/:ip
+```
+
+Get all safe IPs:
+```
+GET /api/safe-ips
+```
 
 ## Development
 
-### Running Tests
-```bash
-# Analysis Service
-cd analysis-service
-npm test
+### Development Workflow
 
-# Capture Service
+#### Capture Service
+```bash
+cd capture-service
+go run main.go
+```
+
+#### Analysis Service v2
+```bash
+cd analysis-service-2
+npm run dev
+```
+
+#### Frontend
+```bash
+cd frontend
+npm run dev
+```
+
+### Testing
+
+#### Capture Service
+```bash
 cd capture-service
 go test ./...
 ```
 
-### Building
+#### Analysis Service v2
 ```bash
-# Analysis Service
-cd analysis-service
-npm run build
-
-# Capture Service
-cd capture-service
-go build
+cd analysis-service-2
+npm test
 ```
 
-## Contributing
+#### Frontend
+```bash
+cd frontend
+npm test
+```
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+## Troubleshooting
+
+### Common Issues
+
+#### Capture Service
+
+**Issue**: Permission denied when accessing network interfaces
+**Solution**: Run with administrative privileges (sudo on Linux/macOS)
+
+**Issue**: Cannot find network interfaces
+**Solution**: 
+- Verify Npcap/libpcap installation
+- Check interface names with `ipconfig` (Windows) or `ifconfig`/`ip a` (Linux/macOS)
+
+#### Analysis Service v2
+
+**Issue**: Cannot connect to Redis
+**Solution**: 
+- Verify Redis is running: `redis-cli ping`
+- Check connection settings in `.env` file
+
+**Issue**: Error fetching from Ipsum Feed
+**Solution**: 
+- Check internet connectivity
+- Verify the Ipsum Feed URL in the configuration
+
+#### Frontend
+
+**Issue**: Cannot connect to API
+**Solution**: 
+- Ensure Analysis Service v2 is running
+- Check API URL in `.env.local` file
+
+### Logs
+
+- Capture Service logs: Output to console and `capture-service/logs` directory
+- Analysis Service v2 logs: Output to console and `analysis-service-2/logs` directory
+- Frontend logs: Available in browser console and Next.js logs
+
+For more detailed troubleshooting, check the console output or log files of the respective services.
