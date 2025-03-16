@@ -16,13 +16,29 @@ services:
     depends_on:
       - redis
 
-  analysis-worker:
+  analysis-service:
     build:
-      context: ./analysis-worker
+      context: ./analysis-service-2
       dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
     depends_on:
       - redis
       - capture-service
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - analysis-service
+    environment:
+      - NEXT_PUBLIC_API_URL=http://analysis-service:3001
 
 volumes:
   redis-data: 
