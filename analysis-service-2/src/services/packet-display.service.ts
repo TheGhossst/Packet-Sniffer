@@ -44,17 +44,55 @@ ${chalk.blue('│')} ${chalk.cyan('Source')}          : ${threatColor(source.pad
       
       if (maliciousCheck.score !== undefined) {
         output += `
-${chalk.blue('│')} ${chalk.cyan('Score')}           : ${threatColor(String(maliciousCheck.score).padEnd(10))}                                      ${chalk.blue('│')}`;
+${chalk.blue('│')} ${chalk.cyan('Score')}           : ${threatColor(String(maliciousCheck.score.toFixed(2)).padEnd(10))}                                      ${chalk.blue('│')}`;
       }
-
-      if (maliciousCheck.isMalicious && maliciousCheck.reasons && maliciousCheck.reasons.length > 0) {
+      
+      if (maliciousCheck.details?.sourceCount) {
         output += `
-${chalk.blue('│')} ${chalk.cyan('Reasons')}         : ${threatColor(maliciousCheck.reasons.length + ' detected')}                                    ${chalk.blue('│')}`;
+${chalk.blue('│')} ${chalk.cyan('Source Count')}    : ${threatColor(String(maliciousCheck.details.sourceCount).padEnd(10))}                                      ${chalk.blue('│')}`;
       }
-    }
-
-    output += `
+      
+      if (maliciousCheck.details?.enrichment) {
+        const enrichment = maliciousCheck.details.enrichment;
+        
+        if (enrichment.country) {
+          output += `
+${chalk.blue('│')} ${chalk.cyan('Country')}         : ${chalk.yellow(String(enrichment.country).padEnd(10))}                                      ${chalk.blue('│')}`;
+        }
+        
+        if (enrichment.isp) {
+          output += `
+${chalk.blue('│')} ${chalk.cyan('ISP')}             : ${chalk.yellow(String(enrichment.isp).padEnd(10))}                                      ${chalk.blue('│')}`;
+        }
+      }
+      
+      if (maliciousCheck.details?.results?.virusTotal) {
+        const vt = maliciousCheck.details.results.virusTotal;
+        if (vt.detections && vt.total) {
+          output += `
+${chalk.blue('│')} ${chalk.cyan('VirusTotal')}      : ${threatColor(`${vt.detections}/${vt.total} engines`.padEnd(10))}                                      ${chalk.blue('│')}`;
+        }
+      }
+      
+      if (maliciousCheck.details?.results?.abuseIPDB) {
+        const abuse = maliciousCheck.details.results.abuseIPDB;
+        if (abuse.confidenceScore !== undefined) {
+          output += `
+${chalk.blue('│')} ${chalk.cyan('AbuseIPDB')}       : ${threatColor(`${abuse.confidenceScore}% confidence`.padEnd(10))}                                      ${chalk.blue('│')}`;
+        }
+      }
+      
+      if (maliciousCheck.details?.results?.ipsum) {
+        const ipsum = maliciousCheck.details.results.ipsum;
+        if (ipsum.score !== undefined) {
+          output += `
+${chalk.blue('│')} ${chalk.cyan('Ipsum')}           : ${threatColor(`${ipsum.score} blacklists`.padEnd(10))}                                      ${chalk.blue('│')}`;
+        }
+      }
+      
+      output += `
 ${chalk.blue('└───────────────────────────────────────────────────────────────────────┘')}`;
+    }
 
     return output;
   }

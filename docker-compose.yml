@@ -12,7 +12,7 @@ services:
     build:
       context: ./capture-service
       dockerfile: Dockerfile
-    network_mode: "host"  # Required for packet capture
+    network_mode: "host"
     depends_on:
       - redis
 
@@ -28,6 +28,8 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+      - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY:-}
 
   frontend:
     build:

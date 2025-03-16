@@ -19,7 +19,6 @@ class MetricsServerService {
 
     try {
       this.server = http.createServer(async (req, res) => {
-        // Only respond to /metrics endpoint
         if (req.url === '/metrics') {
           res.setHeader('Content-Type', 'text/plain');
           
@@ -33,7 +32,6 @@ class MetricsServerService {
             res.end('Error generating metrics');
           }
         } else {
-          // For any other endpoint, return basic information
           res.setHeader('Content-Type', 'text/html');
           res.statusCode = 200;
           res.end(`

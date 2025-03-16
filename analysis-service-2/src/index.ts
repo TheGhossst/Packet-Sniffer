@@ -1,3 +1,14 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+console.log('===== ENVIRONMENT VARIABLES =====');
+console.log('VIRUSTOTAL_API_KEY:', process.env.VIRUSTOTAL_API_KEY ? `✓ Set (length: ${process.env.VIRUSTOTAL_API_KEY.length})` : '❌ Not set');
+console.log('ABUSEIPDB_API_KEY:', process.env.ABUSEIPDB_API_KEY ? `✓ Set (length: ${process.env.ABUSEIPDB_API_KEY.length})` : '❌ Not set');
+console.log('REDIS_HOST:', process.env.REDIS_HOST || 'Not set');
+console.log('REDIS_PORT:', process.env.REDIS_PORT || 'Not set');
+console.log('FORCE_EXTERNAL_API_CHECKS:', process.env.FORCE_EXTERNAL_API_CHECKS || 'Not set');
+console.log('================================');
+
 import { analysisService } from './services/analysis.service';
 import { metricsServerService } from './services/metrics-server.service';
 

@@ -1,4 +1,20 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Network Analysis Service Frontend
+
+This is the frontend interface for the Network Analysis Service, built with [Next.js](https://nextjs.org) and bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Overview
+
+The frontend provides a modern, responsive dashboard for monitoring network packets and security threats detected by the Analysis Service. It visualizes packet data, threat statuses, and system metrics in real-time.
+
+## Features
+
+- Real-time packet monitoring dashboard
+- Threat visualization and statistics
+- Detailed packet inspection with threat intelligence data
+- Service performance metrics monitoring
+- IP geolocation mapping
+- Responsive design for all device sizes
+- Dark/light mode support
 
 ## Getting Started
 
@@ -20,6 +36,25 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Integration with Analysis Service
+
+This frontend connects to the Analysis Service v2 to display:
+
+- Latest captured packets and their metadata
+- Threat intelligence results and safety status
+- API integration metrics and error rates
+- System performance statistics
+
+## Configuration
+
+The frontend can be configured through environment variables:
+
+```
+# .env.local
+NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_METRICS_URL=http://localhost:3002
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
@@ -29,7 +64,7 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deployment
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 

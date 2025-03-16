@@ -15,6 +15,11 @@ class MetricsService {
   private safeListHits!: prometheus.Counter;
   private processingErrors!: prometheus.Counter;
   private threatLevelGauge!: prometheus.Gauge;
+  private virusTotalHitsCounter!: prometheus.Counter;
+  private abuseipdbHitsCounter!: prometheus.Counter;
+  private multiSourceDetectionsCounter!: prometheus.Counter;
+  private apiErrorsCounter!: prometheus.Counter;
+  private apiTimeoutsCounter!: prometheus.Counter;
 
   constructor() {
     this.registry = new prometheus.Registry();
@@ -78,6 +83,38 @@ class MetricsService {
       help: 'Current threat level (0=safe, 1=unknown, 2=medium, 3=high)',
       registers: [this.registry]
     });
+
+    this.virusTotalHitsCounter = new prometheus.Counter({
+      name: 'packet_sniffer_virustotal_hits_total',
+      help: 'Total number of IPs found in VirusTotal',
+      registers: [this.registry]
+    });
+    
+    this.abuseipdbHitsCounter = new prometheus.Counter({
+      name: 'packet_sniffer_abuseipdb_hits_total',
+      help: 'Total number of IPs found in AbuseIPDB',
+      registers: [this.registry]
+    });
+    
+    this.multiSourceDetectionsCounter = new prometheus.Counter({
+      name: 'packet_sniffer_multisource_detections_total',
+      help: 'Total number of IPs detected by multiple threat intelligence sources',
+      registers: [this.registry]
+    });
+
+    this.apiErrorsCounter = new prometheus.Counter({
+      name: 'packet_sniffer_api_errors_total',
+      help: 'Total number of API errors by source',
+      labelNames: ['source'],
+      registers: [this.registry]
+    });
+
+    this.apiTimeoutsCounter = new prometheus.Counter({
+      name: 'packet_sniffer_api_timeouts_total',
+      help: 'Total number of API timeouts by source',
+      labelNames: ['source'],
+      registers: [this.registry]
+    });
   }
 
   /**
@@ -138,6 +175,43 @@ class MetricsService {
    */
   public setThreatLevel(level: number): void {
     this.threatLevelGauge.set(level);
+  }
+
+  /**
+   * Increment VirusTotal hits counter
+   */
+  public incrementVirusTotalHits(): void {
+    this.virusTotalHitsCounter.inc();
+  }
+  
+  /**
+   * Increment AbuseIPDB hits counter
+   */
+  public incrementAbuseIPDBHits(): void {
+    this.abuseipdbHitsCounter.inc();
+  }
+  
+  /**
+   * Increment multi-source detections counter
+   */
+  public incrementMultiSourceDetections(): void {
+    this.multiSourceDetectionsCounter.inc();
+  }
+
+  /**
+   * Increment API errors counter
+   * @param source The API source that encountered an error (e.g., 'virustotal', 'abuseipdb')
+   */
+  public incrementApiErrors(source: string): void {
+    this.apiErrorsCounter.inc({ source });
+  }
+
+  /**
+   * Increment API timeouts counter
+   * @param source The API source that timed out (e.g., 'virustotal', 'abuseipdb')
+   */
+  public incrementApiTimeouts(source: string): void {
+    this.apiTimeoutsCounter.inc({ source });
   }
 
   /**
