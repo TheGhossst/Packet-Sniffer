@@ -1,0 +1,726 @@
+﻿
+> analysis-service-2@2.0.0 test:enhanced
+> npm run build && node -r dotenv/config dist/test-enhanced-features.js
+
+
+> analysis-service-2@2.0.0 build
+> tsc
+
+[VirusTotal] API key found. Service initialized successfully.
+[AbuseIPDB] API key found. Service initialized successfully.
+Initializing services...
+[Ipsum Feed] Initializing service...
+[Ipsum Feed] Cache file path: D:\code\honours_mini_project\blah\Packet-Sniffer\analysis-service-2\data\ipsum-cache.json
+[Ipsum Feed] Safe IPs file path: D:\code\honours_mini_project\blah\Packet-Sniffer\analysis-service-2\data\safe-ips.json
+[Ipsum Feed] Found existing cache file, loading...
+[Ipsum Feed] Found existing safe IPs file, loading...
+[Ipsum Feed] Successfully loaded 277 safe IPs from file
+[Ipsum Feed] Sample safe IPs (first 5):
+[Ipsum Feed] - 192.168.1.1
+[Ipsum Feed] - 192.168.1.100
+[Ipsum Feed] - 93.174.95.107
+[Ipsum Feed] - 162.159.198.1
+[Ipsum Feed] - 192.168.1.6
+[Ipsum Feed] Successfully loaded 6273 IPs from cache (last updated: 26/3/2025, 11:40:08 pm)
+[Ipsum Feed] Hours since last update: 0
+[Ipsum Feed] Using cached data from 26/3/2025, 11:40:08 pm
+[Ipsum Feed] Scheduled automatic updates every 24 hours
+[Ipsum Feed] Initialization complete with 6273 malicious IPs and 277 safe IPs
+[Ipsum Feed] Sample malicious IPs (first 5):
+[Ipsum Feed] - 134.209.120.69 (Score: 8)
+[Ipsum Feed] - 194.0.234.36 (Score: 8)
+[Ipsum Feed] - 218.92.0.103 (Score: 8)
+[Ipsum Feed] - 218.92.0.223 (Score: 8)
+[Ipsum Feed] - 218.92.0.227 (Score: 8)
+
+========================================
+ TESTING DEEP PACKET INSPECTION (DPI)
+========================================
+
+----- Testing HTTP-based attacks -----
+
+Testing: Suspicious User-Agent (sqlmap)
+£à DPI Detection successful! Protocol: TCP, Confidence: 66.7%
+Findings:
+- [MEDIUM] SUSPICIOUS_USER_AGENT: Detected suspicious user agent: sqlmap
+
+Testing with full malicious check service:
+[Safe IP] IP: 8.8.8.8 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  8.8.8.8:80   
+ Protocol        : TCP                                             
+ Size            : 112 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (96 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Safe                                            
+ Threat Level    : trusted                                         
+ Source          : safe-list                                       
+ Score           : 0.00                                            
+
+
+Testing: Directory Traversal Attack
+£à DPI Detection successful! Protocol: TCP, Confidence: 83.3%
+Findings:
+- [MEDIUM] SUSPICIOUS_URI: Detected suspicious URI pattern
+- [HIGH] DIRECTORY_TRAVERSAL: Detected potential directory traversal attempt
+
+Testing with full malicious check service:
+[Safe IP] IP: 8.8.8.8 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  8.8.8.8:80   
+ Protocol        : TCP                                             
+ Size            : 100 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (80 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Unsafe                                          
+ Threat Level    : medium                                          
+ DPI             : Suspicious TCP traffic                
+ DPI Confidence  : 83.3%                                           
+ Finding         : DIRECTORY_TRAVERSAL                                
+ Source          : dpi                                             
+ Score           : 0.83                                            
+
+
+Testing: Suspicious URI Pattern (phpMyAdmin)
+£à DPI Detection successful! Protocol: TCP, Confidence: 66.7%
+Findings:
+- [MEDIUM] SUSPICIOUS_URI: Detected suspicious URI pattern
+
+Testing with full malicious check service:
+[Safe IP] IP: 8.8.8.8 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  8.8.8.8:80   
+ Protocol        : TCP                                             
+ Size            : 97 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (76 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Safe                                            
+ Threat Level    : trusted                                         
+ Source          : safe-list                                       
+ Score           : 0.00                                            
+
+
+----- Testing DNS-based attacks -----
+
+Testing: Suspicious TLD (.xyz)
+£à DPI Detection successful! Protocol: UDP, Confidence: 44.4%
+Findings:
+- [MEDIUM] SUSPICIOUS_DOMAIN_LENGTH: Unusually long domain name detected (possible DGA)
+- [LOW] SUSPICIOUS_DOMAIN_PATTERN: Domain matches suspicious pattern
+- [LOW] SUSPICIOUS_TLD: Domain uses suspicious TLD: .xyz
+
+Testing with full malicious check service:
+[Safe IP] IP: 8.8.8.8 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  8.8.8.8:53   
+ Protocol        : UDP                                             
+ Size            : 64 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (64 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Safe                                            
+ Threat Level    : trusted                                         
+ Source          : safe-list                                       
+ Score           : 0.00                                            
+
+
+Testing: Very Long Domain Name (potential DGA)
+£à DPI Detection successful! Protocol: UDP, Confidence: 50.0%
+Findings:
+- [MEDIUM] SUSPICIOUS_DOMAIN_LENGTH: Unusually long domain name detected (possible DGA)
+- [LOW] SUSPICIOUS_DOMAIN_PATTERN: Domain matches suspicious pattern
+
+Testing with full malicious check service:
+[Safe IP] IP: 8.8.8.8 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  8.8.8.8:53   
+ Protocol        : UDP                                             
+ Size            : 64 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (80 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Safe                                            
+ Threat Level    : trusted                                         
+ Source          : safe-list                                       
+ Score           : 0.00                                            
+
+
+Testing: Large DNS Packet (potential tunneling)
+£à DPI Detection successful! Protocol: UDP, Confidence: 66.7%
+Findings:
+- [MEDIUM] POSSIBLE_DNS_TUNNELING: Unusually large DNS packet detected (possible DNS tunneling)
+
+Testing with full malicious check service:
+[Safe IP] IP: 8.8.8.8 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  8.8.8.8:53   
+ Protocol        : UDP                                             
+ Size            : 600 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (44 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Safe                                            
+ Threat Level    : trusted                                         
+ Source          : safe-list                                       
+ Score           : 0.00                                            
+
+
+----- Testing SQL Injection detection -----
+
+Testing: SQL Injection Attack
+£à DPI Detection successful! Protocol: TCP, Confidence: 83.3%
+Findings:
+- [HIGH] SQL_INJECTION: Detected potential SQL injection attempt
+- [MEDIUM] SUSPICIOUS_URI: Detected suspicious URI pattern
+
+Testing with full malicious check service:
+[Safe IP] IP: 8.8.8.8 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  8.8.8.8:80   
+ Protocol        : TCP                                             
+ Size            : 104 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (88 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Unsafe                                          
+ Threat Level    : medium                                          
+ DPI             : Suspicious TCP traffic                
+ DPI Confidence  : 83.3%                                           
+ Finding         : SQL_INJECTION                                
+ Source          : dpi                                             
+ Score           : 0.83                                            
+
+
+Testing: SQL Injection with UNION SELECT
+£à DPI Detection successful! Protocol: TCP, Confidence: 100.0%
+Findings:
+- [HIGH] SQL_INJECTION: Detected potential SQL injection attempt
+
+Testing with full malicious check service:
+[Safe IP] IP: 8.8.8.8 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  8.8.8.8:80   
+ Protocol        : TCP                                             
+ Size            : 142 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (136 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Unsafe                                          
+ Threat Level    : medium                                          
+ DPI             : Suspicious TCP traffic                
+ DPI Confidence  : 100.0%                                           
+ Finding         : SQL_INJECTION                                
+ Source          : dpi                                             
+ Score           : 1.00                                            
+
+
+----- Testing XSS detection -----
+
+Testing: Basic XSS Attack
+£à DPI Detection successful! Protocol: TCP, Confidence: 100.0%
+Findings:
+- [HIGH] XSS: Detected potential cross-site scripting (XSS) attempt
+
+Testing with full malicious check service:
+[Safe IP] IP: 8.8.8.8 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  8.8.8.8:80   
+ Protocol        : TCP                                             
+ Size            : 125 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (116 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Unsafe                                          
+ Threat Level    : medium                                          
+ DPI             : Suspicious TCP traffic                
+ DPI Confidence  : 100.0%                                           
+ Finding         : XSS                                       
+ Source          : dpi                                             
+ Score           : 1.00                                            
+
+
+Testing: XSS with Event Handler
+£à DPI Detection successful! Protocol: TCP, Confidence: 100.0%
+Findings:
+- [HIGH] XSS: Detected potential cross-site scripting (XSS) attempt
+
+Testing with full malicious check service:
+[Safe IP] IP: 8.8.8.8 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  8.8.8.8:80   
+ Protocol        : TCP                                             
+ Size            : 122 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (112 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Unsafe                                          
+ Threat Level    : medium                                          
+ DPI             : Suspicious TCP traffic                
+ DPI Confidence  : 100.0%                                           
+ Finding         : XSS                                       
+ Source          : dpi                                             
+ Score           : 1.00                                            
+
+
+----- Testing TLS Analysis -----
+
+Testing: TLS Handshake
+¥ DPI Detection failed - No findings
+
+Testing with full malicious check service:
+[Safe IP] IP: 192.168.1.100 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  192.168.1.100:443   
+ Protocol        : TCP                                             
+ Size            : 60 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (28 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Safe                                            
+ Threat Level    : trusted                                         
+ Source          : safe-list                                       
+ Score           : 0.00                                            
+
+
+Testing: SSL Stripping Attack
+¥ DPI Detection failed - No findings
+
+Testing with full malicious check service:
+[Safe IP] IP: 192.168.1.100 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  192.168.1.100:443   
+ Protocol        : TCP                                             
+ Size            : 67 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (36 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Safe                                            
+ Threat Level    : trusted                                         
+ Source          : safe-list                                       
+ Score           : 0.00                                            
+
+
+----- Testing SMTP Analysis -----
+
+Testing: Malicious Email Attachment
+£à DPI Detection successful! Protocol: TCP, Confidence: 100.0%
+Findings:
+- [HIGH] SUSPICIOUS_ATTACHMENT: Email contains suspicious attachment (/\.exe$/i)
+
+Testing with full malicious check service:
+[Safe IP] IP: 192.168.1.100 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  192.168.1.100:25   
+ Protocol        : TCP                                             
+ Size            : 298 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (344 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Unsafe                                          
+ Threat Level    : medium                                          
+ DPI             : Suspicious TCP traffic                
+ DPI Confidence  : 100.0%                                           
+ Finding         : SUSPICIOUS_ATTACHMENT                                
+ Source          : dpi                                             
+ Score           : 1.00                                            
+
+
+Testing: Email Spoofing Detection
+£à DPI Detection successful! Protocol: TCP, Confidence: 83.3%
+Findings:
+- [MEDIUM] PHISHING_INDICATORS: Email contains phishing keywords (/security.*alert/i)
+- [HIGH] EMAIL_SPOOFING: Potential email spoofing detected
+
+Testing with full malicious check service:
+[Safe IP] IP: 192.168.1.100 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  192.168.1.100:25   
+ Protocol        : TCP                                             
+ Size            : 264 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (300 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Unsafe                                          
+ Threat Level    : medium                                          
+ DPI             : Suspicious TCP traffic                
+ DPI Confidence  : 83.3%                                           
+ Finding         : EMAIL_SPOOFING                                
+ Source          : dpi                                             
+ Score           : 0.83                                            
+
+
+----- Testing SMB/Windows Protocol Analysis -----
+
+Testing: EternalBlue Exploit Detection
+£à DPI Detection successful! Protocol: TCP, Confidence: 83.3%
+Findings:
+- [HIGH] ETERNALBLUE_EXPLOIT: Potential EternalBlue (MS17-010) exploit attempt
+- [MEDIUM] SUSPICIOUS_SMB_COMMAND: Detected potentially suspicious SMB command: Trans2
+
+Testing with full malicious check service:
+[Safe IP] IP: 192.168.1.100 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  192.168.1.100:445   
+ Protocol        : TCP                                             
+ Size            : 180 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (192 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Unsafe                                          
+ Threat Level    : medium                                          
+ DPI             : Suspicious TCP traffic                
+ DPI Confidence  : 83.3%                                           
+ Finding         : ETERNALBLUE_EXPLOIT                                
+ Source          : dpi                                             
+ Score           : 0.83                                            
+
+
+Testing: Administrative Share Access
+£à DPI Detection successful! Protocol: TCP, Confidence: 66.7%
+Findings:
+- [MEDIUM] SUSPICIOUS_SMB_COMMAND: Detected potentially suspicious SMB command: Tree Connect AndX
+- [MEDIUM] SENSITIVE_SHARE_ACCESS: Access to sensitive SMB share detected: /ADMIN\$
+
+Testing with full malicious check service:
+[Safe IP] IP: 192.168.1.100 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  192.168.1.100:445   
+ Protocol        : TCP                                             
+ Size            : 116 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (104 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Unsafe                                          
+ Threat Level    : medium                                          
+ DPI             : Suspicious TCP traffic                
+ DPI Confidence  : 66.7%                                           
+ Finding         : SUSPICIOUS_SMB_COMMAND                                
+ Source          : dpi                                             
+ Score           : 0.67                                            
+
+
+Testing: Pass-the-Hash Attack
+£à DPI Detection successful! Protocol: TCP, Confidence: 100.0%
+Findings:
+- [HIGH] PASS_THE_HASH: Potential Pass-the-Hash attack detected
+
+Testing with full malicious check service:
+[Safe IP] IP: 192.168.1.100 | Marked as safe
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.5:54321  192.168.1.100:445   
+ Protocol        : TCP                                             
+ Size            : 137 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (132 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Unsafe                                          
+ Threat Level    : medium                                          
+ DPI             : Suspicious TCP traffic                
+ DPI Confidence  : 100.0%                                           
+ Finding         : PASS_THE_HASH                                
+ Source          : dpi                                             
+ Score           : 1.00                                            
+
+
+----- Testing ICMP Protocol Analysis -----
+
+Testing: Oversized ICMP Packet
+£à DPI Detection successful! Protocol: ICMP, Confidence: 66.7%
+Findings:
+- [MEDIUM] OVERSIZED_ICMP: Abnormally large ICMP packet detected
+- [HIGH] ICMP_TUNNELING: Potential ICMP tunneling detected
+- [LOW] PING_SWEEP: Potential ping sweep detected
+
+Testing with full malicious check service:
+[Ipsum Feed] IP 10.0.0.1 not found in blacklist
+[Threat Intelligence] Checking IP: 10.0.0.1
+[Ipsum Feed] IP 10.0.0.1 not found in blacklist
+[Threat Intelligence] IP 10.0.0.1 not flagged by Ipsum, skipping additional API calls
+[Threat Intelligence] IP: 10.0.0.1 | Malicious: false | Score: 0.00 | Threat Level: unknown | Sources: 0
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.100:0  10.0.0.1:0   
+ Protocol        : ICMP                                            
+ Size            : 2048 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (2692 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Unsafe                                          
+ Threat Level    : high                                            
+ DPI             : Suspicious ICMP traffic                
+ DPI Confidence  : 66.7%                                           
+ Finding         : ICMP_TUNNELING                                
+ Source          : multiple-sources                                      
+ Score           : 0.53                                            
+ Source Count    : 1                                               
+
+
+Testing: ICMP Tunneling
+£à DPI Detection successful! Protocol: ICMP, Confidence: 66.7%
+Findings:
+- [HIGH] ICMP_TUNNELING: Potential ICMP tunneling detected
+- [LOW] PING_SWEEP: Potential ping sweep detected
+
+Testing with full malicious check service:
+[Ipsum Feed] IP 10.0.0.1 not found in blacklist
+[Threat Intelligence] IP 10.0.0.1 found in safe IP memory cache, skipping all checks
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.100:0  10.0.0.1:0   
+ Protocol        : ICMP                                            
+ Size            : 256 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (88 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Unsafe                                          
+ Threat Level    : high                                            
+ DPI             : Suspicious ICMP traffic                
+ DPI Confidence  : 66.7%                                           
+ Finding         : ICMP_TUNNELING                                
+ Source          : multiple-sources                                      
+ Score           : 0.53                                            
+ Source Count    : 1                                               
+
+
+Testing: Unusual ICMP Type
+£à DPI Detection successful! Protocol: ICMP, Confidence: 50.0%
+Findings:
+- [LOW] PING_SWEEP: Potential ping sweep detected
+- [MEDIUM] UNUSUAL_ICMP_TYPE: Unusual ICMP message type: 42
+
+Testing with full malicious check service:
+[Ipsum Feed] IP 10.0.0.1 not found in blacklist
+[Threat Intelligence] IP 10.0.0.1 found in safe IP memory cache, skipping all checks
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.100:0  10.0.0.1:0   
+ Protocol        : ICMP                                            
+ Size            : 64 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+ Payload         : Present (28 bytes)                              
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Safe                                            
+ Threat Level    : trusted                                         
+ Source          : unknown                                         
+ Score           : 0.00                                            
+
+
+========================================
+ TESTING BEHAVIORAL ANALYSIS
+========================================
+
+----- Testing Port Scanning detection -----
+Simulating port scan from 192.168.1.10 to 10.0.0.1...
+
+Analysis for: Port Scanning
+£à Behavioral Analysis Detection successful!
+Anomalies:
+- [MEDIUM] PORT_SCAN: Possible port scanning from 192.168.1.10 (25 unique ports) (90.0% confidence)
+
+Testing with full malicious check service:
+[Ipsum Feed] IP 10.0.0.1 not found in blacklist
+[Threat Intelligence] IP 10.0.0.1 found in safe IP memory cache, skipping all checks
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.10:12345  10.0.0.1:25   
+ Protocol        : TCP                                             
+ Size            : 64 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Safe                                            
+ Threat Level    : trusted                                         
+ Source          : unknown                                         
+ Score           : 0.00                                            
+
+
+----- Testing High Traffic Volume detection -----
+Simulating high traffic volume from 192.168.1.20 to 10.0.0.2...
+
+Analysis for: High Traffic Volume
+£à Behavioral Analysis Detection successful!
+Anomalies:
+- [MEDIUM] ELEVATED_TRAFFIC_VOLUME: Elevated traffic volume from 192.168.1.20 (120 packets/min) (60.0% confidence)
+
+Testing with full malicious check service:
+[Ipsum Feed] IP 10.0.0.2 not found in blacklist
+[Threat Intelligence] Checking IP: 10.0.0.2
+[Ipsum Feed] IP 10.0.0.2 not found in blacklist
+[Threat Intelligence] IP 10.0.0.2 not flagged by Ipsum, skipping additional API calls
+[Threat Intelligence] IP: 10.0.0.2 | Malicious: false | Score: 0.00 | Threat Level: unknown | Sources: 0
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.20:12345  10.0.0.2:80   
+ Protocol        : TCP                                             
+ Size            : 64 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Safe                                            
+ Threat Level    : not in blacklist                                      
+ Source          : unknown                                         
+ Score           : 0.00                                            
+
+
+----- Testing Excessive Connections detection -----
+Simulating connections to multiple destinations from 192.168.1.30...
+
+Analysis for: Excessive Connections
+£à Behavioral Analysis Detection successful!
+Anomalies:
+- [MEDIUM] EXCESSIVE_CONNECTIONS: 192.168.1.30 connecting to excessive unique destinations (35) (75.0% confidence)
+
+Testing with full malicious check service:
+[Ipsum Feed] IP 10.0.0.35 not found in blacklist
+[Threat Intelligence] Checking IP: 10.0.0.35
+[Ipsum Feed] IP 10.0.0.35 not found in blacklist
+[Threat Intelligence] IP 10.0.0.35 not flagged by Ipsum, skipping additional API calls
+[Threat Intelligence] IP: 10.0.0.35 | Malicious: false | Score: 0.00 | Threat Level: unknown | Sources: 0
+
+
+ PACKET DETAILS                                                       
+£
+ Connection      : 192.168.1.30:12345  10.0.0.35:80   
+ Protocol        : TCP                                             
+ Size            : 64 bytes                                      
+ Type            : DATA                                      
+ Timestamp       : 27/3/2025, 12:30:08 am                      
+£
+ THREAT ANALYSIS                                                     
+£
+ Status          : Safe                                            
+ Threat Level    : not in blacklist                                      
+ Source          : unknown                                         
+ Score           : 0.00                                            
+
+
+All tests completed!
+

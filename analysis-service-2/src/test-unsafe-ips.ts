@@ -1,7 +1,7 @@
-import { maliciousCheckService } from './services/malicious-check.service';
-import { ipsumFeedService } from './services/ipsum-feed.service';
-import { packetDisplayService } from './services/packet-display.service';
-import { PacketData } from './types/packet.types';
+import { maliciousCheckService } from './services/malicious-check.service.js';
+import { ipsumFeedService } from './services/ipsum-feed.service.js';
+import { packetDisplayService } from './services/packet-display.service.js';
+import { PacketData } from './types/packet.types.js';
 
 // Sample unsafe IPs from the ipsum cache (with high scores)
 const unsafeIps = [

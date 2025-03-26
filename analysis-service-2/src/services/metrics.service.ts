@@ -20,6 +20,13 @@ class MetricsService {
   private multiSourceDetectionsCounter!: prometheus.Counter;
   private apiErrorsCounter!: prometheus.Counter;
   private apiTimeoutsCounter!: prometheus.Counter;
+  private dpiDetectionsCounter!: prometheus.Counter;
+  private behavioralAnomaliesCounter!: prometheus.Counter;
+  private suspiciousConnectionsGauge!: prometheus.Gauge;
+  private tlsDetectionsCounter!: prometheus.Counter;
+  private smtpDetectionsCounter!: prometheus.Counter;
+  private smbDetectionsCounter!: prometheus.Counter;
+  private icmpDetectionsCounter!: prometheus.Counter;
 
   constructor() {
     this.registry = new prometheus.Registry();
@@ -113,6 +120,54 @@ class MetricsService {
       name: 'packet_sniffer_api_timeouts_total',
       help: 'Total number of API timeouts by source',
       labelNames: ['source'],
+      registers: [this.registry]
+    });
+    
+    this.dpiDetectionsCounter = new prometheus.Counter({
+      name: 'packet_sniffer_dpi_detections_total',
+      help: 'Total number of suspicious packets detected by DPI',
+      labelNames: ['protocol', 'type'],
+      registers: [this.registry]
+    });
+    
+    this.behavioralAnomaliesCounter = new prometheus.Counter({
+      name: 'packet_sniffer_behavioral_anomalies_total',
+      help: 'Total number of behavioral anomalies detected',
+      labelNames: ['type', 'severity'],
+      registers: [this.registry]
+    });
+    
+    this.suspiciousConnectionsGauge = new prometheus.Gauge({
+      name: 'packet_sniffer_suspicious_connections',
+      help: 'Current number of tracked suspicious connections',
+      registers: [this.registry]
+    });
+
+    this.tlsDetectionsCounter = new prometheus.Counter({
+      name: 'packet_sniffer_tls_detections_total',
+      help: 'Total number of suspicious TLS connections detected',
+      labelNames: ['type'],
+      registers: [this.registry]
+    });
+
+    this.smtpDetectionsCounter = new prometheus.Counter({
+      name: 'packet_sniffer_smtp_detections_total',
+      help: 'Total number of suspicious email activities detected',
+      labelNames: ['type'],
+      registers: [this.registry]
+    });
+
+    this.smbDetectionsCounter = new prometheus.Counter({
+      name: 'packet_sniffer_smb_detections_total',
+      help: 'Total number of suspicious SMB activities detected',
+      labelNames: ['type'],
+      registers: [this.registry]
+    });
+
+    this.icmpDetectionsCounter = new prometheus.Counter({
+      name: 'packet_sniffer_icmp_detections_total',
+      help: 'Total number of suspicious ICMP activities detected',
+      labelNames: ['type'],
       registers: [this.registry]
     });
   }
@@ -212,6 +267,64 @@ class MetricsService {
    */
   public incrementApiTimeouts(source: string): void {
     this.apiTimeoutsCounter.inc({ source });
+  }
+
+  /**
+   * Increment DPI detections counter
+   * @param protocol The protocol where suspicious activity was detected
+   * @param type The type of suspicious activity detected
+   */
+  public incrementDpiDetections(protocol: string = 'unknown', type: string = 'general'): void {
+    this.dpiDetectionsCounter.inc({ protocol, type });
+  }
+
+  /**
+   * Increment behavioral anomalies counter
+   * @param type The type of anomaly detected
+   * @param severity The severity of the anomaly
+   */
+  public incrementBehavioralAnomalies(type: string, severity: string = 'medium'): void {
+    this.behavioralAnomaliesCounter.inc({ type, severity });
+  }
+
+  /**
+   * Set current number of suspicious connections
+   * @param count Number of suspicious connections
+   */
+  public setSuspiciousConnections(count: number): void {
+    this.suspiciousConnectionsGauge.set(count);
+  }
+
+  /**
+   * Increment TLS detection counter
+   * @param type Type of suspicious TLS activity detected
+   */
+  public incrementTlsDetections(type: string): void {
+    this.tlsDetectionsCounter.inc({ type });
+  }
+
+  /**
+   * Increment SMTP detection counter
+   * @param type Type of suspicious email activity detected
+   */
+  public incrementSmtpDetections(type: string): void {
+    this.smtpDetectionsCounter.inc({ type });
+  }
+
+  /**
+   * Increment SMB detection counter
+   * @param type Type of suspicious SMB activity detected
+   */
+  public incrementSmbDetections(type: string): void {
+    this.smbDetectionsCounter.inc({ type });
+  }
+
+  /**
+   * Increment ICMP detection counter
+   * @param type Type of suspicious ICMP activity detected
+   */
+  public incrementIcmpDetections(type: string): void {
+    this.icmpDetectionsCounter.inc({ type });
   }
 
   /**

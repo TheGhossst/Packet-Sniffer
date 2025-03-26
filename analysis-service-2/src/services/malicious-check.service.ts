@@ -1,7 +1,8 @@
-import { PacketData, MaliciousCheckResult } from '../types/packet.types.js';
+import { PacketData, MaliciousCheckResult, ProtocolAnalysisResult } from '../types/packet.types.js';
 import { ipsumFeedService } from './ipsum-feed.service.js';
 import { metricsService } from './metrics.service.js';
 import { threatIntelligenceService } from './threat-intelligence.service.js';
+import { dpiService } from './dpi.service.js';
 
 class MaliciousCheckService {
   private recentIps = new Map<string, {count: number, lastSeen: number}>();
@@ -68,9 +69,43 @@ class MaliciousCheckService {
   async checkPacket(packet: PacketData): Promise<MaliciousCheckResult> {
     const ipToCheck = packet.dst_ip;
     
+    // First, perform deep packet inspection if payload is available
+    let dpiResult: ProtocolAnalysisResult | null = null;
+    
+    if (packet.payload) {
+      dpiResult = await dpiService.analyzePacket(packet);
+      
+      // If DPI analysis found suspicious content, update metrics
+      if (dpiResult?.isSuspicious) {
+        metricsService.incrementDpiDetections(
+          dpiResult.protocol,
+          dpiResult.findings[0]?.type || 'general'
+        );
+      }
+    }
+    
     if (ipsumFeedService.isSafeIp(ipToCheck)) {
       console.log(`[Safe IP] IP: ${ipToCheck} | Marked as safe`);
       metricsService.incrementSafeListHits();
+      
+      // Even for safe IPs, include DPI results if they exist and are suspicious
+      if (dpiResult?.isSuspicious) {
+        return {
+          isMalicious: true, // Override safe IP status if DPI finds something suspicious
+          reasons: [{
+            source: 'dpi',
+            category: 'protocol-analysis',
+            description: `Suspicious content detected in ${dpiResult.protocol} traffic`
+          }],
+          threatLevel: 'medium',
+          timestamp: new Date().toISOString(),
+          score: dpiResult.confidence || 0.7,
+          details: {
+            source: 'dpi'
+          },
+          protocolAnalysis: dpiResult
+        };
+      }
       
       return {
         isMalicious: false,
@@ -98,7 +133,10 @@ class MaliciousCheckService {
     const tiResult = await threatIntelligenceService.checkIp(ipToCheck, checkExternalAPIs);
     
     // Track this IP (only if not malicious) for potential addition to safe list
-    this.trackIp(ipToCheck, tiResult.isMalicious);
+    // Don't track as safe if DPI found something suspicious
+    if (!dpiResult?.isSuspicious) {
+      this.trackIp(ipToCheck, tiResult.isMalicious);
+    }
     
     if (tiResult.isMalicious) {
       if (tiResult.results.virusTotal?.isMalicious) {
@@ -118,25 +156,62 @@ class MaliciousCheckService {
       }
     }
     
-    return {
-      isMalicious: tiResult.isMalicious,
-      reasons: tiResult.reasons.map(reason => ({
+    // If either TI or DPI found something suspicious, mark as malicious
+    const isMalicious = tiResult.isMalicious || dpiResult?.isSuspicious || false;
+    
+    // Calculate combined score, giving more weight to TI but including DPI if available
+    const combinedScore = dpiResult?.isSuspicious
+      ? Math.max(tiResult.combinedScore, dpiResult.confidence * 0.8) 
+      : tiResult.combinedScore;
+    
+    // Determine threat level
+    let threatLevel = tiResult.threatLevel;
+    if (dpiResult?.isSuspicious) {
+      // If DPI found a high severity issue, escalate to high
+      if (dpiResult.findings.some(f => f.severity === 'high')) {
+        threatLevel = 'high';
+      } 
+      // Otherwise if TI wasn't already high, escalate to at least medium
+      else if (threatLevel !== 'high') {
+        threatLevel = 'medium';
+      }
+    }
+    
+    // Combine reasons
+    const reasons = [
+      ...tiResult.reasons.map(reason => ({
         source: 'threat-intelligence',
         category: tiResult.threatLevel,
         description: reason
-      })),
-      threatLevel: tiResult.threatLevel,
+      }))
+    ];
+    
+    // Add DPI reasons if available
+    if (dpiResult?.isSuspicious) {
+      reasons.push({
+        source: 'dpi',
+        category: 'protocol-analysis',
+        description: `Suspicious content detected in ${dpiResult.protocol} traffic`
+      });
+    }
+    
+    return {
+      isMalicious,
+      reasons,
+      threatLevel,
       timestamp: new Date().toISOString(),
-      score: tiResult.combinedScore,
+      score: combinedScore,
       details: {
-        source: tiResult.sourceCount > 1 ? 'multiple-sources' : 
+        source: dpiResult?.isSuspicious ? 'multiple-sources' :
+                tiResult.sourceCount > 1 ? 'multiple-sources' : 
                 tiResult.results.ipsum?.isMalicious ? 'ipsum' :
                 tiResult.results.virusTotal?.isMalicious ? 'virustotal' :
                 tiResult.results.abuseIPDB?.isMalicious ? 'abuseipdb' : 'unknown',
-        sourceCount: tiResult.sourceCount,
+        sourceCount: tiResult.sourceCount + (dpiResult?.isSuspicious ? 1 : 0),
         enrichment: tiResult.enrichment,
         results: tiResult.results
-      }
+      },
+      protocolAnalysis: dpiResult || undefined
     };
   }
 

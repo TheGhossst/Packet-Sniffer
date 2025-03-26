@@ -9,6 +9,7 @@
     "build": "tsc",
     "dev": "nodemon --exec ts-node -r dotenv/config src/index.ts",
     "test": "npm run build && node -r dotenv/config dist/test-unsafe-ips.js",
+    "test:enhanced": "npm run build && node -r dotenv/config dist/test-enhanced-features.js",
     "debug-env": "node -r dotenv/config -e \"console.log(process.env)\""
   },
   "dependencies": {
