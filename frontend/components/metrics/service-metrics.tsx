@@ -13,9 +13,6 @@ import { Payload } from 'recharts/types/component/DefaultTooltipContent';
 
 const REFRESH_INTERVAL = 10000; // 10 seconds
 
-/**
- * Component for displaying service metrics in card format
- */
 export function ServiceMetricsCards() {
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -80,83 +77,89 @@ export function ServiceMetricsCards() {
   const lastUpdatedTime = new Date(data.lastUpdated).toLocaleTimeString();
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex flex-col space-y-1">
-            <CardTitle>Total Packets</CardTitle>
-            <CardDescription>Processed by analysis service</CardDescription>
-          </div>
-          <div className={cn(
-            "ml-auto font-semibold",
-            data.connectionStatus === 'connected' ? "text-green-500" : "text-red-500"
-          )}>
-            {data.connectionStatus === 'connected' ? "●" : "○"}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{data.totalPacketsProcessed.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Last updated: {lastUpdatedTime}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex flex-col space-y-1">
-            <CardTitle>Malicious Packets</CardTitle>
-            <CardDescription>Detected by analysis service</CardDescription>
-          </div>
-          <Badge variant={data.maliciousPacketsTotal > 0 ? "destructive" : "outline"}>
-            {data.maliciousPacketsTotal > 0 ? "Alert" : "No Alerts"}
-          </Badge>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{data.maliciousPacketsTotal.toLocaleString()}</div>
-          <div className="flex justify-between mt-2">
-            <Badge variant="outline" className="bg-red-500">High: {data.maliciousByThreatLevel.high}</Badge>
-            <Badge variant="outline" className="bg-yellow-500">Medium: {data.maliciousByThreatLevel.medium}</Badge>
-            <Badge variant="outline" className="bg-blue-500">Unknown: {data.maliciousByThreatLevel.unknown}</Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex flex-col space-y-1">
-            <CardTitle>Processing Time</CardTitle>
-            <CardDescription>Average per packet</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{data.averageProcessingDuration.toFixed(3)} s</div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Errors: {data.processingErrors.toLocaleString()}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex flex-col space-y-1">
-            <CardTitle>Detection Sources</CardTitle>
-            <CardDescription>Source of malicious IP detection</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col">
-              <span className="text-muted-foreground text-sm">IPSUM Blacklist</span>
-              <span className="text-xl font-semibold">{data.ipsumsBlacklistHits.toLocaleString()}</span>
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex flex-col space-y-1">
+              <CardTitle>Total Packets</CardTitle>
+              <CardDescription>Processed by analysis service</CardDescription>
             </div>
-            <div className="flex flex-col">
-              <span className="text-muted-foreground text-sm">Safe IPs</span>
-              <span className="text-xl font-semibold">{data.safeListHits.toLocaleString()}</span>
+            <div className={cn(
+              "ml-auto font-semibold",
+              data.connectionStatus === 'connected' ? "text-green-500" : "text-red-500"
+            )}>
+              {data.connectionStatus === 'connected' ? "●" : "○"}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.totalPacketsProcessed.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Last updated: {lastUpdatedTime}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex flex-col space-y-1">
+              <CardTitle>Malicious Packets</CardTitle>
+              <CardDescription>Detected by analysis service</CardDescription>
+            </div>
+            <Badge variant={data.maliciousPacketsTotal > 0 ? "destructive" : "outline"}>
+              {data.maliciousPacketsTotal > 0 ? "Alert" : "No Alerts"}
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.maliciousPacketsTotal.toLocaleString()}</div>
+            <div className="flex justify-between mt-2">
+              <Badge variant="outline" className="bg-red-500">High: {data.maliciousByThreatLevel.high}</Badge>
+              <Badge variant="outline" className="bg-yellow-500">Medium: {data.maliciousByThreatLevel.medium}</Badge>
+              <Badge variant="outline" className="bg-blue-500">Unknown: {data.maliciousByThreatLevel.unknown}</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex flex-col space-y-1">
+              <CardTitle>Processing Time</CardTitle>
+              <CardDescription>Average per packet</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.averageProcessingDuration.toFixed(3)} s</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Errors: {data.processingErrors.toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex flex-col space-y-1">
+              <CardTitle>Detection Sources</CardTitle>
+              <CardDescription>Source of malicious IP detection</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col">
+                <span className="text-muted-foreground text-sm">IPSUM Blacklist</span>
+                <span className="text-xl font-semibold">{data.ipsumsBlacklistHits.toLocaleString()}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-muted-foreground text-sm">Safe IPs</span>
+                <span className="text-xl font-semibold">{data.safeListHits.toLocaleString()}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <ApiMetricsCard />
+      </div>
     </div>
   );
 }
@@ -166,12 +169,8 @@ interface CustomLabelProps extends PieLabelRenderProps {
   percent: number;
 }
 
-// Define the type for tooltip formatter using the Recharts Payload type
 type TooltipFormatterCallback = (value: number, name?: string, entry?: Payload<number, string>, index?: number) => [string, string];
 
-/**
- * Component for displaying service metrics in chart format
- */
 export function ServiceMetricsCharts() {
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -379,5 +378,132 @@ export function ServiceMetricsCharts() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export function ApiMetricsCard() {
+  const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getMetrics = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchMetrics();
+        setMetrics(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching API metrics:', err);
+        setError('Failed to fetch API metrics');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getMetrics();
+
+    const intervalId = setInterval(getMetrics, REFRESH_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  if (loading && !metrics) {
+    return (
+      <div className="flex justify-center items-center h-48">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Loading API metrics...</span>
+      </div>
+    );
+  }
+
+  if (error && !metrics) {
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+
+  const hasApiMetrics = metrics &&
+    (metrics.apiErrors.length > 0 || metrics.apiTimeouts.length > 0 ||
+      metrics.virusTotalHits > 0 || metrics.abuseIPDBHits > 0);
+
+  if (!hasApiMetrics) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>External API Metrics</CardTitle>
+          <CardDescription>Integration with external threat intelligence APIs</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-muted-foreground">
+            No API activity detected yet. API metrics will appear here when the system interacts with external threat intelligence sources.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>External API Metrics</CardTitle>
+        <CardDescription>Integration with external threat intelligence APIs</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <h4 className="font-medium mb-2">API Success Metrics</h4>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm">VirusTotal Detections:</span>
+                <Badge variant="outline" className="bg-green-100 text-green-800">
+                  {metrics?.virusTotalHits || 0}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm">AbuseIPDB Detections:</span>
+                <Badge variant="outline" className="bg-green-100 text-green-800">
+                  {metrics?.abuseIPDBHits || 0}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm">Multi-Source Detections:</span>
+                <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                  {metrics?.multiSourceDetections || 0}
+                </Badge>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-medium mb-2">API Error Metrics</h4>
+            <div className="space-y-3">
+              {metrics?.apiErrors.map((error, index) => (
+                <div key={`error-${index}`} className="flex justify-between">
+                  <span className="text-sm">{error.source} Errors:</span>
+                  <Badge variant="outline" className="bg-red-100 text-red-800">
+                    {error.count}
+                  </Badge>
+                </div>
+              ))}
+              {metrics?.apiTimeouts.map((timeout, index) => (
+                <div key={`timeout-${index}`} className="flex justify-between">
+                  <span className="text-sm">{timeout.source} Timeouts:</span>
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
+                    {timeout.count}
+                  </Badge>
+                </div>
+              ))}
+              {metrics?.apiErrors.length === 0 && metrics?.apiTimeouts.length === 0 && (
+                <div className="text-xs text-muted-foreground">No API errors detected</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,27 +1,25 @@
 import { NextResponse } from 'next/server';
 
 /**
- * API route to proxy requests to the Prometheus metrics endpoint
- * This avoids CORS issues when fetching from the frontend
+ * API route to fetch metrics from the Prometheus server
+ * This acts as a proxy to avoid CORS issues on the frontend
  */
 export async function GET() {
   try {
     const response = await fetch('http://localhost:9090/metrics', {
       headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+        'Accept': 'text/plain',
+        'Cache-Control': 'no-cache'
       },
-      signal: AbortSignal.timeout(5000)
+      next: { revalidate: 0 } // Disable caching
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch metrics: ${response.statusText}`);
+      throw new Error(`Error fetching metrics: ${response.status} ${response.statusText}`);
     }
 
     const text = await response.text();
-    
     return new NextResponse(text, {
-      status: 200,
       headers: {
         'Content-Type': 'text/plain',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -30,11 +28,13 @@ export async function GET() {
       }
     });
   } catch (error) {
-    console.error('Error proxying metrics request:', error);
-    
+    console.error('Error proxying metrics:', error);
     return new NextResponse(
-      JSON.stringify({ error: 'Failed to fetch metrics from Prometheus endpoint' }), 
-      { 
+      JSON.stringify({
+        error: 'Failed to fetch metrics',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      {
         status: 500,
         headers: {
           'Content-Type': 'application/json'

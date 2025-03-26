@@ -111,6 +111,14 @@ export default function DashboardPage() {
                                                                     and provide more accurate threat detection.
                                                                 </p>
                                                             </div>
+
+                                                            <div>
+                                                                <h4 className="font-medium mb-1">External API Integration</h4>
+                                                                <p className="text-sm text-muted-foreground">
+                                                                    The service integrates with external threat intelligence APIs (VirusTotal, AbuseIPDB) to enrich detection capabilities.
+                                                                    API metrics show successful detections, errors, and timeouts for comprehensive monitoring.
+                                                                </p>
+                                                            </div>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
