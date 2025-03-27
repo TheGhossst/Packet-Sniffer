@@ -17,12 +17,14 @@
     "chalk": "^4.1.2",
     "dotenv": "^16.4.7",
     "prom-client": "^14.2.0",
-    "redis": "^4.7.0"
+    "redis": "^4.7.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",
     "@types/chalk": "^2.2.0",
     "@types/node": "^22.13.5",
+    "@types/uuid": "^10.0.0",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"

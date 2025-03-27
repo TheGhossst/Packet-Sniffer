@@ -1,15 +1,46 @@
 export interface PacketData {
+  id?: string;                // Unique identifier for the packet
   src_ip: string;
   src_port: number;
   dst_ip: string;
   dst_port: number;
   protocol: string;
   packet_size: number;
-  packet_type: string;
+  packet_type?: string;       // Made optional since not all packets have this
   timestamp: string;
   payload?: string;
   headers?: Record<string, string>;
+  timestamp_start?: number;   // Start timestamp in milliseconds
+  timestamp_end?: number;     // End timestamp in milliseconds
+  status?: "Safe" | "Unsafe"; // Packet status for frontend display
+  threat_level?: "trusted" | "low" | "medium" | "high"; // Threat level for frontend display
+  threat_details?: Array<{    // Details about threats detected
+    type: string;
+    description: string;
+    severity: 'low' | 'medium' | 'high';
+    confidence?: number;
+  }>;
+  dpi_results?: {             // DPI analysis results
+    protocol?: string;
+    isSuspicious?: boolean;
+    findings?: Array<{
+      type: string;
+      description: string;
+      severity: 'low' | 'medium' | 'high';
+      evidence?: string;
+    }>;
+    confidence?: number;
+  };
+  behavioral_results?: {      // Behavioral analysis results
+    anomalies?: Array<{
+      type: string;
+      description: string;
+      severity: 'low' | 'medium' | 'high';
+      confidence?: number;
+    }>;
+  };
 }
+
 export interface ProtocolAnalysisResult {
   protocol: string;
   isSuspicious: boolean;

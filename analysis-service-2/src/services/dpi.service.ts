@@ -383,7 +383,7 @@ class DnsAnalyzer {
     /\.cn$/,
     /\.tk$/,
     /\.xyz$/,
-    /^[a-z0-9]{30,}\./  // Unusually long subdomain (potential DGA)
+    /^[a-z0-9]{30,}\./
   ];
   
   private suspiciousTlds = [
@@ -396,7 +396,6 @@ class DnsAnalyzer {
   analyze(payload: string, packet: PacketData): ProtocolAnalysisResult | null {
     const findings: ProtocolFinding[] = [];
     
-    // Simplified DNS packet analysis - in a real implementation, this would parse the DNS binary format
     // Here we're looking for domain names in the payload text
     const domainRegex = /([a-zA-Z0-9][-a-zA-Z0-9]*\.)+[a-zA-Z0-9][-a-zA-Z0-9]*/g;
     const domains = payload.match(domainRegex) || [];
